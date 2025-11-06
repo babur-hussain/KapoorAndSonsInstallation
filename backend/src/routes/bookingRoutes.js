@@ -1,5 +1,6 @@
 import express from "express";
 import { Booking } from "../models/Booking.js";
+import { sendNotifications } from "../utils/notify.js";
 
 const router = express.Router();
 
@@ -7,7 +8,7 @@ const router = express.Router();
 router.post("/", async (req, res) => {
   try {
     console.log("📝 Received booking request:", req.body);
-    
+
     // Map mobile app field names to database field names
     const bookingData = {
       customerName: req.body.name,
@@ -21,8 +22,14 @@ router.post("/", async (req, res) => {
 
     const booking = new Booking(bookingData);
     await booking.save();
-    
+
     console.log("✅ Booking saved:", booking);
+
+    // 🔔 Send notifications (async, don't wait for completion)
+    sendNotifications(booking).catch((err) => {
+      console.error("⚠️  Notification failed but booking was saved:", err.message);
+    });
+
     res.json({ success: true, booking });
   } catch (err) {
     console.error("❌ Booking error:", err.message);
