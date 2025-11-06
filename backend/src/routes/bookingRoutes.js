@@ -2,11 +2,12 @@ import express from "express";
 import { Booking } from "../models/Booking.js";
 import { ActivityLog } from "../models/ActivityLog.js";
 import { sendNotifications } from "../utils/notify.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Create a new booking
-router.post("/", async (req, res) => {
+// Create a new booking (protected - requires authentication)
+router.post("/", protect, async (req, res) => {
   try {
     console.log("📝 Received booking request:", req.body);
 
@@ -38,8 +39,8 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Get all bookings
-router.get("/", async (req, res) => {
+// Get all bookings (protected - requires authentication)
+router.get("/", protect, async (req, res) => {
   try {
     const bookings = await Booking.find().sort({ createdAt: -1 });
     res.json(bookings);
@@ -49,8 +50,8 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Get booking by ID
-router.get("/:id", async (req, res) => {
+// Get booking by ID (protected - requires authentication)
+router.get("/:id", protect, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
@@ -63,8 +64,8 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// Update booking status
-router.patch("/:id", async (req, res) => {
+// Update booking status (protected - requires authentication)
+router.patch("/:id", protect, async (req, res) => {
   try {
     const oldBooking = await Booking.findById(req.params.id);
     if (!oldBooking) {
