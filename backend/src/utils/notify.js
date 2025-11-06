@@ -1,6 +1,25 @@
 import nodemailer from "nodemailer";
 import axios from "axios";
 import { Brand } from "../models/Brand.js";
+import { ActivityLog } from "../models/ActivityLog.js";
+
+/**
+ * Log activity to database
+ */
+async function logActivity(type, message, bookingId, metadata = {}, severity = "info") {
+  try {
+    await ActivityLog.create({
+      type,
+      message,
+      relatedBooking: bookingId,
+      metadata,
+      severity,
+    });
+    console.log(`📝 Activity logged: ${type} - ${message}`);
+  } catch (error) {
+    console.error("❌ Failed to log activity:", error.message);
+  }
+}
 
 /**
  * Send notifications to customer and brand/installer
@@ -9,6 +28,20 @@ import { Brand } from "../models/Brand.js";
 export const sendNotifications = async (booking) => {
   try {
     console.log("📢 Starting notification process for booking:", booking._id);
+
+    // Log booking creation
+    await logActivity(
+      "booking_created",
+      `New booking created for ${booking.customerName} - ${booking.brand} ${booking.model}`,
+      booking._id,
+      {
+        customerName: booking.customerName,
+        brand: booking.brand,
+        model: booking.model,
+        status: booking.status,
+      },
+      "success"
+    );
 
     // 1️⃣ Notify customer (always via WhatsApp if possible, fallback to email)
     await notifyCustomer(booking);
@@ -19,6 +52,16 @@ export const sendNotifications = async (booking) => {
     console.log("✅ All notifications sent successfully");
   } catch (error) {
     console.error("❌ Notification error:", error.message);
+
+    // Log notification failure
+    await logActivity(
+      "notification_failed",
+      `Notification failed for booking ${booking._id}: ${error.message}`,
+      booking._id,
+      { error: error.message },
+      "error"
+    );
+
     // Don't throw error - we don't want to fail the booking if notification fails
   }
 };
@@ -48,6 +91,16 @@ Thank you for choosing Kapoor & Sons! 🙏`;
     const whatsappSent = await sendWhatsApp(booking.contactNumber, message);
     if (whatsappSent) {
       console.log(`✅ Customer WhatsApp notification sent to ${booking.contactNumber}`);
+
+      // Log successful customer notification
+      await logActivity(
+        "message_sent",
+        `WhatsApp notification sent to customer ${booking.customerName}`,
+        booking._id,
+        { channel: "whatsapp", recipient: booking.contactNumber },
+        "success"
+      );
+
       return;
     }
   }
@@ -110,23 +163,82 @@ Kapoor & Sons Demo Booking System`;
 
   // Send based on communication mode
   if (brand.communicationMode === "whatsapp" && brand.whatsappNumber) {
-    await sendWhatsApp(brand.whatsappNumber, message);
-    console.log(`✅ Brand WhatsApp notification sent to ${brand.name}`);
+    const sent = await sendWhatsApp(brand.whatsappNumber, message);
+    if (sent) {
+      console.log(`✅ Brand WhatsApp notification sent to ${brand.name}`);
+      await logActivity(
+        "notification_sent",
+        `WhatsApp notification sent to brand ${brand.name}`,
+        booking._id,
+        { channel: "whatsapp", brand: brand.name, recipient: brand.whatsappNumber },
+        "success"
+      );
+    }
   } else if (brand.communicationMode === "email" && brand.contactEmail) {
-    await sendEmail(brand.contactEmail, emailSubject, emailBody);
-    console.log(`✅ Brand email notification sent to ${brand.name}`);
+    try {
+      await sendEmail(brand.contactEmail, emailSubject, emailBody);
+      console.log(`✅ Brand email notification sent to ${brand.name}`);
+      await logActivity(
+        "notification_sent",
+        `Email notification sent to brand ${brand.name}`,
+        booking._id,
+        { channel: "email", brand: brand.name, recipient: brand.contactEmail },
+        "success"
+      );
+    } catch (error) {
+      await logActivity(
+        "notification_failed",
+        `Email notification failed for brand ${brand.name}: ${error.message}`,
+        booking._id,
+        { channel: "email", brand: brand.name, error: error.message },
+        "error"
+      );
+    }
   } else if (brand.communicationMode === "both") {
     // Send both WhatsApp and Email
     if (brand.whatsappNumber) {
-      await sendWhatsApp(brand.whatsappNumber, message);
-      console.log(`✅ Brand WhatsApp notification sent to ${brand.name}`);
+      const sent = await sendWhatsApp(brand.whatsappNumber, message);
+      if (sent) {
+        console.log(`✅ Brand WhatsApp notification sent to ${brand.name}`);
+        await logActivity(
+          "notification_sent",
+          `WhatsApp notification sent to brand ${brand.name}`,
+          booking._id,
+          { channel: "whatsapp", brand: brand.name, recipient: brand.whatsappNumber },
+          "success"
+        );
+      }
     }
     if (brand.contactEmail) {
-      await sendEmail(brand.contactEmail, emailSubject, emailBody);
-      console.log(`✅ Brand email notification sent to ${brand.name}`);
+      try {
+        await sendEmail(brand.contactEmail, emailSubject, emailBody);
+        console.log(`✅ Brand email notification sent to ${brand.name}`);
+        await logActivity(
+          "notification_sent",
+          `Email notification sent to brand ${brand.name}`,
+          booking._id,
+          { channel: "email", brand: brand.name, recipient: brand.contactEmail },
+          "success"
+        );
+      } catch (error) {
+        await logActivity(
+          "notification_failed",
+          `Email notification failed for brand ${brand.name}: ${error.message}`,
+          booking._id,
+          { channel: "email", brand: brand.name, error: error.message },
+          "error"
+        );
+      }
     }
   } else {
     console.log(`⚠️  No valid communication method configured for brand: ${brand.name}`);
+    await logActivity(
+      "notification_failed",
+      `No valid communication method configured for brand ${brand.name}`,
+      booking._id,
+      { brand: brand.name },
+      "warning"
+    );
   }
 }
 

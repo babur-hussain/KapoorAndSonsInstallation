@@ -1,5 +1,6 @@
 import express from "express";
 import { Booking } from "../models/Booking.js";
+import { ActivityLog } from "../models/ActivityLog.js";
 import { sendNotifications } from "../utils/notify.js";
 
 const router = express.Router();
@@ -65,14 +66,32 @@ router.get("/:id", async (req, res) => {
 // Update booking status
 router.patch("/:id", async (req, res) => {
   try {
+    const oldBooking = await Booking.findById(req.params.id);
+    if (!oldBooking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
     const booking = await Booking.findByIdAndUpdate(
       req.params.id,
       { status: req.body.status },
       { new: true }
     );
-    if (!booking) {
-      return res.status(404).json({ success: false, message: "Booking not found" });
-    }
+
+    // Log status update
+    await ActivityLog.create({
+      type: "status_updated",
+      message: `Booking status updated from "${oldBooking.status}" to "${booking.status}" for ${booking.customerName}`,
+      relatedBooking: booking._id,
+      metadata: {
+        oldStatus: oldBooking.status,
+        newStatus: booking.status,
+        customerName: booking.customerName,
+        brand: booking.brand,
+      },
+      severity: "info",
+    });
+
+    console.log(`✅ Booking status updated: ${oldBooking.status} → ${booking.status}`);
     res.json({ success: true, booking });
   } catch (err) {
     console.error("❌ Error updating booking:", err.message);

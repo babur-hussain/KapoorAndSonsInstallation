@@ -3,6 +3,7 @@ import AdminJSExpress from "@adminjs/express";
 import * as AdminJSMongoose from "@adminjs/mongoose";
 import { Booking } from "../models/Booking.js";
 import { Brand } from "../models/Brand.js";
+import { ActivityLog } from "../models/ActivityLog.js";
 
 // Register the Mongoose adapter
 AdminJS.registerAdapter({
@@ -145,6 +146,84 @@ const adminOptions = {
         sort: {
           sortBy: "name",
           direction: "asc",
+        },
+      },
+    },
+    {
+      resource: ActivityLog,
+      options: {
+        navigation: {
+          name: "System Logs",
+          icon: "Activity",
+        },
+        properties: {
+          type: {
+            position: 1,
+            availableValues: [
+              { value: "booking_created", label: "📝 Booking Created" },
+              { value: "booking_updated", label: "✏️ Booking Updated" },
+              { value: "status_updated", label: "🔄 Status Updated" },
+              { value: "message_sent", label: "💬 Message Sent" },
+              { value: "notification_sent", label: "🔔 Notification Sent" },
+              { value: "notification_failed", label: "❌ Notification Failed" },
+              { value: "brand_created", label: "🏢 Brand Created" },
+              { value: "brand_updated", label: "🏢 Brand Updated" },
+            ],
+          },
+          message: {
+            position: 2,
+            type: "textarea",
+          },
+          severity: {
+            position: 3,
+            availableValues: [
+              { value: "info", label: "ℹ️ Info" },
+              { value: "success", label: "✅ Success" },
+              { value: "warning", label: "⚠️ Warning" },
+              { value: "error", label: "❌ Error" },
+            ],
+          },
+          relatedBooking: {
+            position: 4,
+            isVisible: { list: true, show: true, edit: false, filter: true },
+          },
+          metadata: {
+            position: 5,
+            type: "mixed",
+            isVisible: { list: false, show: true, edit: false, filter: false },
+          },
+          createdAt: {
+            position: 6,
+            isVisible: { list: true, show: true, edit: false, filter: true },
+          },
+          updatedAt: {
+            position: 7,
+            isVisible: { list: false, show: true, edit: false, filter: false },
+          },
+        },
+        listProperties: ["type", "message", "severity", "createdAt"],
+        showProperties: [
+          "type",
+          "message",
+          "severity",
+          "relatedBooking",
+          "metadata",
+          "createdAt",
+        ],
+        sort: {
+          sortBy: "createdAt",
+          direction: "desc",
+        },
+        actions: {
+          new: {
+            isVisible: false, // Disable manual creation
+          },
+          edit: {
+            isVisible: false, // Disable editing
+          },
+          delete: {
+            isAccessible: true, // Allow deletion for cleanup
+          },
         },
       },
     },

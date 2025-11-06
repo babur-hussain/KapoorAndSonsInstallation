@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { connectDB } from "./config/db.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
+import adminStatsRoutes from "./routes/adminStats.js";
 import { admin, adminRouter } from "./admin/admin.js";
 
 dotenv.config();
@@ -25,6 +26,7 @@ app.get("/health", (req, res) => {
 
 // API Routes
 app.use("/api/v1/bookings", bookingRoutes);
+app.use("/api/v1/admin/stats", adminStatsRoutes);
 
 // AdminJS Dashboard
 app.use(admin.options.rootPath, adminRouter);
