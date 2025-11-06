@@ -113,8 +113,44 @@ export const optionalProtect = async (req, res, next) => {
 };
 
 /**
+ * Role-based authorization middleware
+ * Checks if authenticated user has one of the allowed roles
+ * Must be used after protect middleware
+ *
+ * Usage:
+ * router.get("/admin-route", protect, authorize("admin"), handler);
+ * router.get("/staff-route", protect, authorize("admin", "staff"), handler);
+ *
+ * @param {...string} roles - Allowed roles (e.g., "admin", "staff", "customer")
+ * @returns {Function} Express middleware function
+ */
+export const authorize = (...roles) => {
+  return (req, res, next) => {
+    // Check if user is authenticated
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized. Please login first.",
+      });
+    }
+
+    // Check if user's role is in the allowed roles
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: `Access denied. Required role(s): ${roles.join(", ")}. Your role: ${req.user.role}`,
+      });
+    }
+
+    // User has required role, continue
+    next();
+  };
+};
+
+/**
  * Admin-only middleware - Requires user to be authenticated and have admin role
  * Must be used after protect middleware
+ * @deprecated Use authorize("admin") instead
  */
 export const adminOnly = (req, res, next) => {
   if (!req.user) {

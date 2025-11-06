@@ -2,14 +2,16 @@ import express from "express";
 import { Booking } from "../models/Booking.js";
 import { Brand } from "../models/Brand.js";
 import { ActivityLog } from "../models/ActivityLog.js";
+import { protect, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 /**
  * GET /api/v1/admin/stats
  * Returns comprehensive analytics data for the dashboard
+ * Requires: Admin role
  */
-router.get("/", async (req, res) => {
+router.get("/", protect, authorize("admin"), async (req, res) => {
   try {
     // Basic booking counts
     const total = await Booking.countDocuments();
@@ -155,8 +157,9 @@ router.get("/", async (req, res) => {
 /**
  * GET /api/v1/admin/stats/activities
  * Returns recent activity logs with pagination
+ * Requires: Admin role
  */
-router.get("/activities", async (req, res) => {
+router.get("/activities", protect, authorize("admin"), async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;

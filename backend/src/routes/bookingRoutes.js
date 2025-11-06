@@ -6,7 +6,7 @@ import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Create a new booking (protected - requires authentication)
+// Create a new booking (protected - requires authentication, accessible to all logged-in users)
 router.post("/", protect, async (req, res) => {
   try {
     console.log("📝 Received booking request:", req.body);
@@ -39,7 +39,7 @@ router.post("/", protect, async (req, res) => {
   }
 });
 
-// Get all bookings (protected - requires authentication)
+// Get all bookings (protected - requires authentication, accessible to all logged-in users)
 router.get("/", protect, async (req, res) => {
   try {
     const bookings = await Booking.find().sort({ createdAt: -1 });
