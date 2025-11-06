@@ -3,39 +3,53 @@
 
 const API_BASE_URL = 'http://localhost:4000';
 
-export interface BookingData {
+export interface BookingFormData {
   name: string;
   phone: string;
-  brand?: string;
-  model?: string;
+  address: string;
+  brand: string;
+  model: string;
   invoiceNo?: string;
-  preferredAt?: Date;
+  preferredAt?: string; // ISO string format
 }
 
-export const api = {
-  // Future: Submit booking to backend
-  async submitBooking(data: BookingData): Promise<any> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/bookings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to submit booking');
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('API Error:', error);
-      throw error;
-    }
-  },
+export interface BookingResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
 
-  // Future: Get bookings count
+// Main function to submit booking
+export const submitBooking = async (data: BookingFormData): Promise<BookingResponse> => {
+  try {
+    console.log('Submitting booking to:', `${API_BASE_URL}/api/v1/bookings`);
+    console.log('Booking data:', data);
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/bookings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to submit booking');
+    }
+
+    const result = await response.json();
+    console.log('Booking submitted successfully:', result);
+    return result;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+};
+
+// Legacy API object (keeping for backward compatibility)
+export const api = {
+  // Get bookings count
   async getBookingsCount(): Promise<number> {
     try {
       const response = await fetch(`${API_BASE_URL}/bookings/count`);
@@ -47,7 +61,7 @@ export const api = {
     }
   },
 
-  // Future: Health check
+  // Health check
   async healthCheck(): Promise<{ status: string }> {
     try {
       const response = await fetch(`${API_BASE_URL}/health`);
