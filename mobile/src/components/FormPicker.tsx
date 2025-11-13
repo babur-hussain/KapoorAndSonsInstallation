@@ -5,7 +5,6 @@ type FormPickerProps = {
   label: string;
   value: string;
   onValueChange: (value: string) => void;
-  onBlur?: () => void;
   options: string[];
   placeholder?: string;
   error?: string;
@@ -16,7 +15,6 @@ export default function FormPicker({
   label,
   value,
   onValueChange,
-  onBlur,
   options,
   placeholder = 'Select an option',
   error,
@@ -28,7 +26,6 @@ export default function FormPicker({
   const handleSelect = (option: string) => {
     onValueChange(option);
     setModalVisible(false);
-    if (onBlur) onBlur();
   };
 
   return (
@@ -121,6 +118,7 @@ const styles = StyleSheet.create({
   pickerText: {
     fontSize: 16,
     color: '#2c3e50',
+    flex: 1,
   },
   placeholderText: {
     color: '#95a5a6',
@@ -179,6 +177,7 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 16,
     color: '#2c3e50',
+    flex: 1,
   },
   selectedOptionText: {
     color: '#3498db',

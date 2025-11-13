@@ -2,7 +2,9 @@ import express from "express";
 import { Booking } from "../models/Booking.js";
 import { Brand } from "../models/Brand.js";
 import { ActivityLog } from "../models/ActivityLog.js";
-import { protect, authorize } from "../middleware/authMiddleware.js";
+import { User } from "../models/User.js";
+import { authorize } from "../middleware/authMiddleware.js";
+import { firebaseAuth } from "../middleware/firebaseAuth.js";
 
 const router = express.Router();
 
@@ -11,7 +13,7 @@ const router = express.Router();
  * Returns comprehensive analytics data for the dashboard
  * Requires: Admin role
  */
-router.get("/", protect, authorize("admin"), async (req, res) => {
+router.get("/", firebaseAuth, authorize("admin"), async (req, res) => {
   try {
     // Basic booking counts
     const total = await Booking.countDocuments();
@@ -95,6 +97,13 @@ router.get("/", protect, authorize("admin"), async (req, res) => {
     const totalBrands = await Brand.countDocuments();
     const activeBrands = await Brand.countDocuments({ isActive: true });
 
+    // User count
+    const totalUsers = await User.countDocuments();
+    const activeUsers = await User.countDocuments({ isActive: true });
+    const customerCount = await User.countDocuments({ role: "customer" });
+    const staffCount = await User.countDocuments({ role: "staff" });
+    const adminCount = await User.countDocuments({ role: "admin" });
+
     // Response time (average time from booking to completion)
     const completedBookingsWithTime = await Booking.aggregate([
       {
@@ -140,6 +149,13 @@ router.get("/", protect, authorize("admin"), async (req, res) => {
         total: totalBrands,
         active: activeBrands,
       },
+      users: {
+        total: totalUsers,
+        active: activeUsers,
+        customers: customerCount,
+        staff: staffCount,
+        admins: adminCount,
+      },
       performance: {
         avgResponseHours,
       },
@@ -159,7 +175,7 @@ router.get("/", protect, authorize("admin"), async (req, res) => {
  * Returns recent activity logs with pagination
  * Requires: Admin role
  */
-router.get("/activities", protect, authorize("admin"), async (req, res) => {
+router.get("/activities", firebaseAuth, authorize("admin"), async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;

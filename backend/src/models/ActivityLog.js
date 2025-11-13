@@ -13,6 +13,8 @@ const activityLogSchema = new mongoose.Schema(
         "notification_failed",
         "brand_created",
         "brand_updated",
+        "booking_email_sent",
+        "booking_email_failed",
       ],
       required: true,
     },

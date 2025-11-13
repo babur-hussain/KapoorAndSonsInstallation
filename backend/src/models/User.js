@@ -21,7 +21,10 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, "Please provide a password"],
+      // Password is optional for Firebase users
+      required: function() {
+        return !this.firebaseUid; // Only required if not using Firebase auth
+      },
       minlength: [6, "Password must be at least 6 characters"],
       select: false, // Don't return password by default
     },
@@ -37,6 +40,13 @@ const userSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    // Firebase Authentication
+    firebaseUid: {
+      type: String,
+      unique: true,
+      sparse: true, // Allow null values, only enforce uniqueness when present
+      index: true,
     },
   },
   { timestamps: true }

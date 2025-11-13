@@ -1,0 +1,196 @@
+{
+  "info": {
+    "name": "Email Hook API",
+    "description": "n8n Email Hook Integration for Kapoor & Sons",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Send Email Hook (Valid)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"from\": \"customer@example.com\",\n  \"subject\": \"Booking Confirmation Request\",\n  \"replyText\": \"Thank you for your booking. We will contact you shortly.\",\n  \"replySent\": true,\n  \"timestamp\": \"2025-11-12T06:49:46.213Z\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/email-hook",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "email-hook"]
+        },
+        "description": "Send a valid email hook with all fields"
+      }
+    },
+    {
+      "name": "2. Send Email Hook (Minimal)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"from\": \"minimal@example.com\",\n  \"subject\": \"Minimal Test\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/email-hook",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "email-hook"]
+        },
+        "description": "Send email hook with only required fields"
+      }
+    },
+    {
+      "name": "3. Send Email Hook (Missing Subject)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"from\": \"test@example.com\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/email-hook",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "email-hook"]
+        },
+        "description": "Test validation - should return 400 error"
+      }
+    },
+    {
+      "name": "4. Send Email Hook (Invalid Email)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"from\": \"invalid-email\",\n  \"subject\": \"Test Subject\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/email-hook",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "email-hook"]
+        },
+        "description": "Test email validation - should return 400 error"
+      }
+    },
+    {
+      "name": "5. Get Email Logs (All)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/email-hook/logs?limit=50&page=1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "email-hook", "logs"],
+          "query": [
+            {
+              "key": "limit",
+              "value": "50"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            }
+          ]
+        },
+        "description": "Retrieve all email logs with pagination"
+      }
+    },
+    {
+      "name": "6. Get Email Logs (Filtered by Email)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/email-hook/logs?from=customer@example.com&limit=10",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "email-hook", "logs"],
+          "query": [
+            {
+              "key": "from",
+              "value": "customer@example.com"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        },
+        "description": "Filter logs by email address"
+      }
+    },
+    {
+      "name": "7. Get Email Logs (Replies Sent)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/email-hook/logs?replySent=true&limit=20",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "email-hook", "logs"],
+          "query": [
+            {
+              "key": "replySent",
+              "value": "true"
+            },
+            {
+              "key": "limit",
+              "value": "20"
+            }
+          ]
+        },
+        "description": "Get only logs where reply was sent"
+      }
+    },
+    {
+      "name": "8. Get Email Statistics",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/email-hook/stats",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "email-hook", "stats"]
+        },
+        "description": "Get email log statistics and analytics"
+      }
+    }
+  ]
+}
+

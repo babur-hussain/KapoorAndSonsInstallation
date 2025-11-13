@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,14 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import axios from 'axios';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import FormInput from '../components/FormInput';
 import FormPicker from '../components/FormPicker';
 import { submitBooking, BookingFormData } from '../services/api';
+import socketService from '../services/socketService';
+
+const API_BASE_URL = 'http://192.168.29.132:4000/api/v1';
 
 type BookingFormScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -27,11 +31,21 @@ type Props = {
   navigation: BookingFormScreenNavigationProp;
 };
 
+interface Brand {
+  _id: string;
+  name: string;
+  logo?: string;
+  isActive: boolean;
+}
+
 // Validation schema using Yup
 const validationSchema = Yup.object().shape({
   name: Yup.string()
     .min(2, 'Name must be at least 2 characters')
     .required('Name is required'),
+  email: Yup.string()
+    .email('Invalid email address')
+    .optional(),
   phone: Yup.string()
     .matches(/^[0-9]{10,}$/, 'Phone number must be at least 10 digits')
     .required('Phone number is required'),
@@ -46,14 +60,17 @@ const validationSchema = Yup.object().shape({
   preferredAt: Yup.date().nullable(),
 });
 
-const BRAND_OPTIONS = ['Samsung', 'LG', 'Whirlpool', 'Oppo'];
-
 export default function BookingFormScreen({ navigation }: Props) {
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempDate, setTempDate] = useState(new Date());
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [loadingBrands, setLoadingBrands] = useState(true);
+  const [brandOptions, setBrandOptions] = useState<string[]>([]);
 
   const initialValues = {
     name: '',
+    email: '',
     phone: '',
     address: '',
     brand: '',
@@ -61,6 +78,68 @@ export default function BookingFormScreen({ navigation }: Props) {
     invoiceNo: '',
     preferredAt: null as Date | null,
   };
+
+  // Fetch brands from API
+  const fetchBrands = async () => {
+    try {
+      setLoadingBrands(true);
+      const url = `${API_BASE_URL}/brands`;
+      console.log('🔍 Fetching brands from:', url);
+      const response = await axios.get(url);
+      console.log('📦 Response received:', response.data);
+
+      if (response.data.success && response.data.data) {
+        const fetchedBrands: Brand[] = response.data.data;
+        setBrands(fetchedBrands);
+
+        // Extract brand names for picker (backend already filters by isActive)
+        const names = fetchedBrands.map((brand) => brand.name);
+        setBrandOptions(names);
+
+        console.log('✅ Brands loaded:', names);
+      }
+    } catch (error: any) {
+      console.error('❌ Error fetching brands:', error);
+      console.error('❌ Error details:', error.message, error.code);
+      // Fallback to empty array if API fails
+      setBrandOptions([]);
+    } finally {
+      setLoadingBrands(false);
+    }
+  };
+
+  // Setup Socket.IO listeners for real-time brand updates
+  useEffect(() => {
+    // Initial fetch
+    fetchBrands();
+
+    // Setup Socket.IO listeners
+    const handleBrandCreated = (data: any) => {
+      console.log('⚡ New brand created:', data);
+      fetchBrands(); // Refresh brands list
+    };
+
+    const handleBrandUpdated = (data: any) => {
+      console.log('⚡ Brand updated:', data);
+      fetchBrands(); // Refresh brands list
+    };
+
+    const handleBrandDeleted = (data: any) => {
+      console.log('⚡ Brand deleted:', data);
+      fetchBrands(); // Refresh brands list
+    };
+
+    socketService.on('brandCreated', handleBrandCreated);
+    socketService.on('brandUpdated', handleBrandUpdated);
+    socketService.on('brandDeleted', handleBrandDeleted);
+
+    // Cleanup listeners on unmount
+    return () => {
+      socketService.off('brandCreated', handleBrandCreated);
+      socketService.off('brandUpdated', handleBrandUpdated);
+      socketService.off('brandDeleted', handleBrandDeleted);
+    };
+  }, []);
 
   const handleSubmit = async (
     values: typeof initialValues,
@@ -133,17 +212,29 @@ export default function BookingFormScreen({ navigation }: Props) {
               label="Customer Name *"
               value={values.name}
               onChangeText={handleChange('name')}
-              onBlur={handleBlur('name')}
+              onBlur={() => handleBlur('name')}
               placeholder="Enter your full name"
               error={errors.name}
               touched={touched.name}
             />
 
             <FormInput
+              label="Email Address (Optional)"
+              value={values.email}
+              onChangeText={handleChange('email')}
+              onBlur={() => handleBlur('email')}
+              placeholder="Enter your email address"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              error={errors.email}
+              touched={touched.email}
+            />
+
+            <FormInput
               label="Contact Number *"
               value={values.phone}
               onChangeText={handleChange('phone')}
-              onBlur={handleBlur('phone')}
+              onBlur={() => handleBlur('phone')}
               placeholder="Enter 10-digit phone number"
               keyboardType="phone-pad"
               error={errors.phone}
@@ -154,7 +245,7 @@ export default function BookingFormScreen({ navigation }: Props) {
               label="Address *"
               value={values.address}
               onChangeText={handleChange('address')}
-              onBlur={handleBlur('address')}
+              onBlur={() => handleBlur('address')}
               placeholder="Enter your complete address"
               multiline
               numberOfLines={3}
@@ -162,22 +253,32 @@ export default function BookingFormScreen({ navigation }: Props) {
               touched={touched.address}
             />
 
-            <FormPicker
-              label="Brand *"
-              value={values.brand}
-              onValueChange={(value) => setFieldValue('brand', value)}
-              onBlur={handleBlur('brand')}
-              options={BRAND_OPTIONS}
-              placeholder="Select a brand"
-              error={errors.brand}
-              touched={touched.brand}
-            />
+            {loadingBrands ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#007AFF" />
+                <Text style={styles.loadingText}>Loading brands...</Text>
+              </View>
+            ) : (
+              <FormPicker
+                label="Brand *"
+                value={values.brand}
+                onValueChange={(value) => {
+                  setFieldValue('brand', value);
+                  // Manually trigger touched state
+                  setFieldValue('brand', value, true);
+                }}
+                options={brandOptions}
+                placeholder={brandOptions.length > 0 ? "Select a brand" : "No brands available"}
+                error={errors.brand}
+                touched={touched.brand}
+              />
+            )}
 
             <FormInput
               label="Model *"
               value={values.model}
               onChangeText={handleChange('model')}
-              onBlur={handleBlur('model')}
+              onBlur={() => handleBlur('model')}
               placeholder="Enter product model"
               error={errors.model}
               touched={touched.model}
@@ -187,7 +288,7 @@ export default function BookingFormScreen({ navigation }: Props) {
               label="Invoice Number (Optional)"
               value={values.invoiceNo}
               onChangeText={handleChange('invoiceNo')}
-              onBlur={handleBlur('invoiceNo')}
+              onBlur={() => handleBlur('invoiceNo')}
               placeholder="Enter invoice number if available"
             />
 
@@ -208,47 +309,79 @@ export default function BookingFormScreen({ navigation }: Props) {
                 </Text>
                 <Text style={styles.calendarIcon}>📅</Text>
               </TouchableOpacity>
+
+              {values.preferredAt && (
+                <TouchableOpacity
+                  style={styles.clearButton}
+                  onPress={() => setFieldValue('preferredAt', null)}
+                >
+                  <Text style={styles.clearButtonText}>Clear</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
-            {showDatePicker && (
+            {showDatePicker && Platform.OS === 'android' && (
               <DateTimePicker
                 value={tempDate}
-                mode="datetime"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event, selectedDate) => {
-                  if (Platform.OS === 'android') {
-                    setShowDatePicker(false);
-                  }
+                mode="date"
+                display="default"
+                onChange={(_event, selectedDate) => {
+                  setShowDatePicker(false);
                   if (selectedDate) {
                     setTempDate(selectedDate);
-                    if (Platform.OS === 'android') {
-                      setFieldValue('preferredAt', selectedDate);
-                    }
+                    setShowTimePicker(true);
                   }
                 }}
                 minimumDate={new Date()}
               />
             )}
 
-            {Platform.OS === 'ios' && showDatePicker && (
-              <View style={styles.iosDatePickerButtons}>
-                <TouchableOpacity
-                  style={styles.datePickerButton}
-                  onPress={() => setShowDatePicker(false)}
-                >
-                  <Text style={styles.datePickerButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.datePickerButton, styles.datePickerConfirm]}
-                  onPress={() => {
-                    setFieldValue('preferredAt', tempDate);
-                    setShowDatePicker(false);
+            {showTimePicker && Platform.OS === 'android' && (
+              <DateTimePicker
+                value={tempDate}
+                mode="time"
+                display="default"
+                onChange={(_event, selectedTime) => {
+                  setShowTimePicker(false);
+                  if (selectedTime) {
+                    setFieldValue('preferredAt', selectedTime);
+                  }
+                }}
+              />
+            )}
+
+            {showDatePicker && Platform.OS === 'ios' && (
+              <View style={styles.iosDatePickerContainer}>
+                <DateTimePicker
+                  value={tempDate}
+                  mode="datetime"
+                  display="spinner"
+                  onChange={(_event, selectedDate) => {
+                    if (selectedDate) {
+                      setTempDate(selectedDate);
+                    }
                   }}
-                >
-                  <Text style={[styles.datePickerButtonText, styles.confirmText]}>
-                    Confirm
-                  </Text>
-                </TouchableOpacity>
+                  minimumDate={new Date()}
+                />
+                <View style={styles.iosDatePickerButtons}>
+                  <TouchableOpacity
+                    style={styles.datePickerButton}
+                    onPress={() => setShowDatePicker(false)}
+                  >
+                    <Text style={styles.datePickerButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.datePickerButton, styles.datePickerConfirm]}
+                    onPress={() => {
+                      setFieldValue('preferredAt', tempDate);
+                      setShowDatePicker(false);
+                    }}
+                  >
+                    <Text style={[styles.datePickerButtonText, styles.confirmText]}>
+                      Confirm
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
 
@@ -327,10 +460,34 @@ const styles = StyleSheet.create({
   calendarIcon: {
     fontSize: 20,
   },
+  clearButton: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#e74c3c',
+    borderRadius: 6,
+  },
+  clearButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  iosDatePickerContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   iosDatePickerButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginTop: 16,
     gap: 10,
   },
   datePickerButton: {
@@ -382,6 +539,20 @@ const styles = StyleSheet.create({
     color: '#7f8c8d',
     fontSize: 16,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  loadingText: {
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#7f8c8d',
   },
 });
 

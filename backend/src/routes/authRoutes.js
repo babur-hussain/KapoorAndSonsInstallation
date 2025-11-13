@@ -1,6 +1,6 @@
 import express from "express";
 import { User } from "../models/User.js";
-import { generateToken, protect } from "../middleware/authMiddleware.js";
+import { firebaseAuth } from "../middleware/firebaseAuth.js";
 
 const router = express.Router();
 
@@ -137,7 +137,7 @@ router.post("/login", async (req, res) => {
  * GET /api/v1/auth/me
  * Get current user profile (requires authentication)
  */
-router.get("/me", protect, async (req, res) => {
+router.get("/me", firebaseAuth, async (req, res) => {
   try {
     res.json({
       success: true,
@@ -164,7 +164,7 @@ router.get("/me", protect, async (req, res) => {
  * PUT /api/v1/auth/profile
  * Update user profile (requires authentication)
  */
-router.put("/profile", protect, async (req, res) => {
+router.put("/profile", firebaseAuth, async (req, res) => {
   try {
     const { name, phone } = req.body;
 
@@ -209,7 +209,7 @@ router.put("/profile", protect, async (req, res) => {
  * POST /api/v1/auth/change-password
  * Change user password (requires authentication)
  */
-router.post("/change-password", protect, async (req, res) => {
+router.post("/change-password", firebaseAuth, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
