@@ -17,6 +17,10 @@ const brandSchema = new mongoose.Schema(
       enum: ["whatsapp", "email", "both"],
       default: "email",
     },
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+    },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

@@ -11,7 +11,7 @@ const router = express.Router();
 router.get("/", async (req, res) => {
   try {
     const brands = await Brand.find({ isActive: true })
-      .select("name logo")
+      .select("name logo contactEmail whatsappNumber preferredCommunication communicationMode category")
       .sort({ name: 1 });
 
     res.json({
@@ -24,6 +24,35 @@ router.get("/", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch brands",
+      error: err.message,
+    });
+  }
+});
+
+/**
+ * Get brands by category
+ * @route GET /api/v1/brands/category/:categoryId
+ * @access Public
+ */
+router.get("/category/:categoryId", async (req, res) => {
+  try {
+    const brands = await Brand.find({ 
+      isActive: true, 
+      category: req.params.categoryId 
+    })
+      .select("name logo contactEmail whatsappNumber preferredCommunication communicationMode category")
+      .sort({ name: 1 });
+
+    res.json({
+      success: true,
+      count: brands.length,
+      data: brands,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching brands for category:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch brands for category",
       error: err.message,
     });
   }

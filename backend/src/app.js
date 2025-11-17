@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { connectDB } from "./config/db.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import brandRoutes from "./routes/brandRoutes.js";
+import categoryRoutes from "./routes/categoryRoutes.js";
 import modelRoutes from "./routes/modelRoutes.js";
 import adminStatsRoutes from "./routes/adminStats.js";
 import statsRoutes from "./routes/statsRoutes.js";
@@ -32,6 +33,7 @@ app.get("/health", (req, res) => {
 // API Routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/bookings", bookingRoutes);
+app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/brands", brandRoutes);
 app.use("/api/v1/models", modelRoutes);
 app.use("/api/v1/stats", statsRoutes);

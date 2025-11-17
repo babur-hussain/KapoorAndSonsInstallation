@@ -14,7 +14,15 @@ const bookingSchema = new mongoose.Schema(
     customerName: { type: String, required: true },
     email: { type: String },
     contactNumber: { type: String, required: true },
+    alternateContactNumber: { type: String },
     address: { type: String, required: true },
+    alternateAddress: { type: String },
+    landmark: { type: String },
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+    },
+    categoryName: { type: String }, // Denormalized for easy access
     brand: { type: String, required: true },
     model: { type: String, required: true },
     invoiceNumber: String,
