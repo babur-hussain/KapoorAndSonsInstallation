@@ -38,6 +38,15 @@ interface Brand {
   isActive: boolean;
 }
 
+interface Category {
+  _id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  displayOrder: number;
+  isActive: boolean;
+}
+
 // Validation schema using Yup
 const validationSchema = Yup.object().shape({
   name: Yup.string()
@@ -52,6 +61,9 @@ const validationSchema = Yup.object().shape({
   address: Yup.string()
     .min(10, 'Address must be at least 10 characters')
     .required('Address is required'),
+  alternateAddress: Yup.string().optional(),
+  landmark: Yup.string().optional(),
+  category: Yup.string().required('Category is required'),
   brand: Yup.string().required('Brand is required'),
   model: Yup.string()
     .min(2, 'Model must be at least 2 characters')
@@ -64,6 +76,9 @@ export default function BookingFormScreen({ navigation }: Props) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempDate, setTempDate] = useState(new Date());
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loadingBrands, setLoadingBrands] = useState(true);
   const [brandOptions, setBrandOptions] = useState<string[]>([]);
@@ -73,10 +88,42 @@ export default function BookingFormScreen({ navigation }: Props) {
     email: '',
     phone: '',
     address: '',
+    alternateAddress: '',
+    landmark: '',
+    category: '',
     brand: '',
     model: '',
     invoiceNo: '',
     preferredAt: null as Date | null,
+  };
+
+  // Fetch categories from API
+  const fetchCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const url = `${API_BASE_URL}/categories`;
+      console.log('🔍 Fetching categories from:', url);
+      const response = await axios.get(url);
+      console.log('📦 Categories response received:', response.data);
+
+      if (response.data.success && response.data.data) {
+        const fetchedCategories: Category[] = response.data.data;
+        setCategories(fetchedCategories);
+
+        // Extract category names for picker (backend already filters by isActive)
+        const names = fetchedCategories.map((category) => category.name);
+        setCategoryOptions(names);
+
+        console.log('✅ Categories loaded:', names);
+      }
+    } catch (error: any) {
+      console.error('❌ Error fetching categories:', error);
+      console.error('❌ Error details:', error.message, error.code);
+      // Fallback to empty array if API fails
+      setCategoryOptions([]);
+    } finally {
+      setLoadingCategories(false);
+    }
   };
 
   // Fetch brands from API
@@ -108,12 +155,13 @@ export default function BookingFormScreen({ navigation }: Props) {
     }
   };
 
-  // Setup Socket.IO listeners for real-time brand updates
+  // Setup Socket.IO listeners for real-time updates
   useEffect(() => {
-    // Initial fetch
+    // Initial fetch for both categories and brands
+    fetchCategories();
     fetchBrands();
 
-    // Setup Socket.IO listeners
+    // Setup Socket.IO listeners for brands
     const handleBrandCreated = (data: any) => {
       console.log('⚡ New brand created:', data);
       fetchBrands(); // Refresh brands list
@@ -151,6 +199,9 @@ export default function BookingFormScreen({ navigation }: Props) {
         name: values.name,
         phone: values.phone,
         address: values.address,
+        alternateAddress: values.alternateAddress || undefined,
+        landmark: values.landmark || undefined,
+        category: values.category || undefined,
         brand: values.brand,
         model: values.model,
         invoiceNo: values.invoiceNo || undefined,
@@ -252,6 +303,45 @@ export default function BookingFormScreen({ navigation }: Props) {
               error={errors.address}
               touched={touched.address}
             />
+
+            <FormInput
+              label="Alternate Address (Optional)"
+              value={values.alternateAddress}
+              onChangeText={handleChange('alternateAddress')}
+              onBlur={() => handleBlur('alternateAddress')}
+              placeholder="Enter alternate/secondary address"
+              multiline
+              numberOfLines={2}
+            />
+
+            <FormInput
+              label="Landmark (Optional)"
+              value={values.landmark}
+              onChangeText={handleChange('landmark')}
+              onBlur={() => handleBlur('landmark')}
+              placeholder="Enter nearby landmark or location reference"
+            />
+
+            {loadingCategories ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#007AFF" />
+                <Text style={styles.loadingText}>Loading categories...</Text>
+              </View>
+            ) : (
+              <FormPicker
+                label="Category *"
+                value={values.category}
+                onValueChange={(value) => {
+                  setFieldValue('category', value);
+                  // Manually trigger touched state
+                  setFieldValue('category', value, true);
+                }}
+                options={categoryOptions}
+                placeholder={categoryOptions.length > 0 ? "Select a category" : "No categories available"}
+                error={errors.category}
+                touched={touched.category}
+              />
+            )}
 
             {loadingBrands ? (
               <View style={styles.loadingContainer}>

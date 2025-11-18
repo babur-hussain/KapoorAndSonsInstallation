@@ -12,6 +12,9 @@ export interface BookingFormData {
   email?: string;
   phone: string;
   address: string;
+  alternateAddress?: string;
+  landmark?: string;
+  category?: string;
   brand: string;
   model: string;
   invoiceNo?: string;

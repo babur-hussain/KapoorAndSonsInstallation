@@ -3,6 +3,7 @@ import AdminJSExpress from "@adminjs/express";
 import * as AdminJSMongoose from "@adminjs/mongoose";
 import { Booking } from "../models/Booking.js";
 import { Brand } from "../models/Brand.js";
+import { Category } from "../models/Category.js";
 import { Model } from "../models/Model.js";
 import { User } from "../models/User.js";
 import { ActivityLog } from "../models/ActivityLog.js";
@@ -43,24 +44,34 @@ const adminOptions = {
             type: "textarea",
             position: 4,
           },
-          brand: {
-            type: "string",
+          alternateAddress: {
+            type: "textarea",
             position: 5,
+            description: "Alternate/Secondary address",
           },
-          model: {
+          landmark: {
             type: "string",
             position: 6,
+            description: "Landmark or location reference",
           },
-          invoiceNumber: {
+          brand: {
             type: "string",
             position: 7,
           },
-          preferredDateTime: {
-            type: "datetime",
+          model: {
+            type: "string",
             position: 8,
           },
-          status: {
+          invoiceNumber: {
+            type: "string",
             position: 9,
+          },
+          preferredDateTime: {
+            type: "datetime",
+            position: 10,
+          },
+          status: {
+            position: 11,
             availableValues: [
               { value: "Pending", label: "⏳ Pending" },
               { value: "Scheduled", label: "📅 Scheduled" },
@@ -69,27 +80,27 @@ const adminOptions = {
             ],
           },
           assignedTo: {
-            position: 10,
+            position: 12,
             reference: "User",
             isVisible: { list: true, show: true, edit: true, filter: true },
           },
           createdBy: {
-            position: 11,
+            position: 13,
             reference: "User",
             isVisible: { list: false, show: true, edit: false, filter: true },
           },
           updates: {
-            position: 12,
+            position: 14,
             type: "mixed",
             isVisible: { list: false, show: true, edit: false, filter: false },
           },
           createdAt: {
             isVisible: { list: true, show: true, edit: false, filter: true },
-            position: 13,
+            position: 15,
           },
           updatedAt: {
             isVisible: { list: true, show: true, edit: false, filter: true },
-            position: 14,
+            position: 16,
           },
         },
         listProperties: ["customerName", "email", "contactNumber", "brand", "model", "status", "assignedTo", "createdAt"],
@@ -98,6 +109,8 @@ const adminOptions = {
           "email",
           "contactNumber",
           "address",
+          "alternateAddress",
+          "landmark",
           "brand",
           "model",
           "invoiceNumber",
@@ -307,7 +320,77 @@ const adminOptions = {
       },
     },
     {
-      resource: User,
+      resource: Category,
+      options: {
+        navigation: {
+          name: "Categories",
+          icon: "Layers",
+        },
+        properties: {
+          name: {
+            isTitle: true,
+            isRequired: true,
+            position: 1,
+          },
+          description: {
+            type: "textarea",
+            position: 2,
+            description: "Category description",
+          },
+          icon: {
+            type: "string",
+            position: 3,
+            description: "URL or path to category icon image",
+          },
+          alternateAddress: {
+            type: "textarea",
+            position: 4,
+            description: "Alternate/secondary address for category location",
+          },
+          landmark: {
+            type: "string",
+            position: 5,
+            description: "Landmark or location reference for category",
+          },
+          displayOrder: {
+            type: "number",
+            position: 6,
+            description: "Order for sorting categories (lower numbers appear first)",
+          },
+          isActive: {
+            type: "boolean",
+            position: 7,
+            description: "Enable/disable this category",
+          },
+          createdAt: {
+            isVisible: { list: true, show: true, edit: false, filter: false },
+            position: 8,
+          },
+          updatedAt: {
+            isVisible: { list: true, show: true, edit: false, filter: false },
+            position: 9,
+          },
+        },
+        listProperties: ["name", "displayOrder", "isActive", "createdAt"],
+        showProperties: [
+          "name",
+          "description",
+          "icon",
+          "alternateAddress",
+          "landmark",
+          "displayOrder",
+          "isActive",
+          "createdAt",
+          "updatedAt",
+        ],
+        sort: {
+          sortBy: "displayOrder",
+          direction: "asc",
+        },
+      },
+    },
+    {
+      resource: Model,
       options: {
         navigation: {
           name: "User Management",

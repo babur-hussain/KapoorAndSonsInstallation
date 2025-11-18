@@ -20,6 +20,14 @@ interface Booking {
   customerName: string;
   contactNumber: string;
   address: string;
+  alternateAddress?: string;
+  landmark?: string;
+  category?: {
+    _id: string;
+    name: string;
+    icon?: string;
+  };
+  categoryName?: string;
   brand: string;
   model: string;
   invoiceNumber: string;
@@ -212,14 +220,31 @@ const BookingListScreen = ({ navigation }: any) => {
               <Text style={styles.sectionTitle}>Booking Details</Text>
 
               <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Category:</Text>
+                <Text style={styles.detailValue}>
+                  {item.category?.name || item.categoryName || "N/A"}
+                </Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Brand:</Text>
+                <Text style={styles.detailValue}>{item.brand}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Model:</Text>
+                <Text style={styles.detailValue}>{item.model}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Invoice Number:</Text>
-                <Text style={styles.detailValue}>{item.invoiceNumber}</Text>
+                <Text style={styles.detailValue}>{item.invoiceNumber || "N/A"}</Text>
               </View>
 
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Preferred Date:</Text>
                 <Text style={styles.detailValue}>
-                  {formatDate(item.preferredDateTime)}
+                  {item.preferredDateTime ? formatDate(item.preferredDateTime) : "Not specified"}
                 </Text>
               </View>
 
@@ -227,6 +252,20 @@ const BookingListScreen = ({ navigation }: any) => {
                 <Text style={styles.detailLabel}>Address:</Text>
                 <Text style={styles.detailValue}>{item.address}</Text>
               </View>
+
+              {item.alternateAddress && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Alternate Address:</Text>
+                  <Text style={styles.detailValue}>{item.alternateAddress}</Text>
+                </View>
+              )}
+
+              {item.landmark && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Landmark:</Text>
+                  <Text style={styles.detailValue}>{item.landmark}</Text>
+                </View>
+              )}
 
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Contact:</Text>
