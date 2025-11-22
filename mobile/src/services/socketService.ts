@@ -1,7 +1,5 @@
 import { io, Socket } from "socket.io-client";
-
-// Use IP address for Expo Go
-const SOCKET_URL = "http://192.168.29.132:4000";
+import { SOCKET_URL } from '../config/api';
 
 class SocketService {
   private socket: Socket | null = null;

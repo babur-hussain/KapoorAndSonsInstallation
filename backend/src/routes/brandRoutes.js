@@ -11,7 +11,8 @@ const router = express.Router();
 router.get("/", async (req, res) => {
   try {
     const brands = await Brand.find({ isActive: true })
-      .select("name logo contactEmail whatsappNumber preferredCommunication communicationMode category")
+      .populate("categories", "name icon displayOrder")
+      .select("_id name logo categories contactEmail whatsappNumber preferredCommunication communicationMode")
       .sort({ name: 1 });
 
     res.json({
@@ -30,23 +31,28 @@ router.get("/", async (req, res) => {
 });
 
 /**
- * Get brands by category
+ * Get brands by category (now searches in categories array)
  * @route GET /api/v1/brands/category/:categoryId
  * @access Public
  */
 router.get("/category/:categoryId", async (req, res) => {
   try {
+    const { categoryId } = req.params;
+    
+    // Find brands that have this category in their categories array
     const brands = await Brand.find({ 
-      isActive: true, 
-      category: req.params.categoryId 
+      isActive: true,
+      categories: { $in: [categoryId] }
     })
-      .select("name logo contactEmail whatsappNumber preferredCommunication communicationMode category")
+      .populate("categories", "name icon displayOrder")
+      .select("_id name logo categories contactEmail whatsappNumber preferredCommunication communicationMode")
       .sort({ name: 1 });
 
     res.json({
       success: true,
       count: brands.length,
       data: brands,
+      message: brands.length === 0 ? `No active brands found for category: ${categoryId}` : undefined,
     });
   } catch (err) {
     console.error("❌ Error fetching brands for category:", err.message);
@@ -65,7 +71,8 @@ router.get("/category/:categoryId", async (req, res) => {
  */
 router.get("/:id", async (req, res) => {
   try {
-    const brand = await Brand.findById(req.params.id);
+    const brand = await Brand.findById(req.params.id)
+      .populate("categories", "name icon displayOrder");
 
     if (!brand) {
       return res.status(404).json({
@@ -89,4 +96,3 @@ router.get("/:id", async (req, res) => {
 });
 
 export default router;
-

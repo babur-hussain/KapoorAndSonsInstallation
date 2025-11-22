@@ -12,7 +12,7 @@ const router = express.Router();
 router.get("/", async (req, res) => {
   try {
     const categories = await Category.find({ isActive: true })
-      .select("name description icon displayOrder")
+      .select("_id name description icon displayOrder")
       .sort({ displayOrder: 1, name: 1 });
 
     res.json({

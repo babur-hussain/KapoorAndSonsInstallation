@@ -3,22 +3,28 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-// Use IP address for Expo Go
-const API_BASE_URL = 'http://192.168.29.132:4000';
+// Use centralized API_HOST and API_BASE_URL
+import { API_HOST, API_BASE_URL } from '../config/api';
 const TOKEN_KEY = 'auth_token';
 
 export interface BookingFormData {
   name: string;
   email?: string;
   phone: string;
+  alternatePhone?: string;
   address: string;
   alternateAddress?: string;
   landmark?: string;
-  category?: string;
+  serialNumber?: string;
+  city: string;
+  state: string;
+  pinCode: string;
+  serviceType?: string; // 'New Installation' or 'Service Complaint'
+  problemDescription?: string; // Required when serviceType is 'Service Complaint'
+  category?: string; // MongoDB ObjectId of the category
+  categoryName?: string;
   brand: string;
   model: string;
-  invoiceNo?: string;
-  preferredAt?: string; // ISO string format
 }
 
 export interface BookingResponse {
@@ -30,7 +36,7 @@ export interface BookingResponse {
 // Main function to submit booking
 export const submitBooking = async (data: BookingFormData): Promise<BookingResponse> => {
   try {
-    console.log('Submitting booking to:', `${API_BASE_URL}/api/v1/bookings`);
+    console.log('Submitting booking to:', `${API_BASE_URL}/bookings`);
     console.log('Booking data:', data);
 
     // Get token from secure storage
@@ -43,7 +49,7 @@ export const submitBooking = async (data: BookingFormData): Promise<BookingRespo
     console.log('Using token:', token.substring(0, 20) + '...');
 
     // Use axios with explicit authorization header
-    const response = await axios.post(`${API_BASE_URL}/api/v1/bookings`, data, {
+    const response = await axios.post(`${API_BASE_URL}/bookings`, data, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -75,7 +81,7 @@ export const api = {
   // Health check
   async healthCheck(): Promise<{ status: string }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/health`);
+      const response = await fetch(`${API_BASE_URL.replace('/api/v1','')}/health`);
       return await response.json();
     } catch (error) {
       console.error('API Error:', error);

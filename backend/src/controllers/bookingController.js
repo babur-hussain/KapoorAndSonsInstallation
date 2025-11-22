@@ -1,6 +1,8 @@
 import { Booking } from "../models/Booking.js";
 import { Brand } from "../models/Brand.js";
+import { Category } from "../models/Category.js";
 import { ActivityLog } from "../models/ActivityLog.js";
+import { User } from "../models/User.js";
 import {
   sendBookingConfirmationToCustomer,
   sendNewBookingToBrand,
@@ -9,7 +11,7 @@ import {
   sendBookingConfirmationEmail,
   sendNewBookingEmailToBrand,
 } from "../services/emailService.js";
-import { triggerDemoBookingEmail } from "../services/n8nService.js";
+import { triggerDemoBookingEmail, triggerBookingWebhook } from "../services/n8nService.js";
 
 /**
  * Log activity to database
@@ -38,28 +40,167 @@ export const createBooking = async (req, res) => {
   try {
     console.log("📝 Received booking request:", req.body);
 
-    // Map mobile app field names to database field names
-    const bookingData = {
-      customerName: req.body.name,
-      email: req.body.email,
-      contactNumber: req.body.phone,
-      address: req.body.address,
-      alternateAddress: req.body.alternateAddress,
-      landmark: req.body.landmark,
-      category: req.body.category,
-      categoryName: req.body.categoryName,
-      brand: req.body.brand,
-      model: req.body.model,
-      invoiceNumber: req.body.invoiceNo,
-      preferredDateTime: req.body.preferredAt,
-      createdBy: req.user._id, // Track who created the booking
+    // Normalize incoming fields: accept multiple possible key names from clients
+    const getField = (keys, fallback = undefined) => {
+      for (const k of keys) {
+        if (req.body[k] !== undefined && req.body[k] !== null) return req.body[k];
+      }
+      return fallback;
     };
+
+    const customerName = getField(['name', 'customerName', 'customer_name'], '');
+    // Accept multiple possible email field names from different clients
+    const rawEmail = getField(
+      ['email', 'customerEmail', 'customer_email', 'emailAddress', 'email_address'],
+      ''
+    );
+    // If standard keys don't contain email, attempt a deep search in the body
+    const isValidEmail = (s) => typeof s === 'string' && /\S+@\S+\.\S+/.test(s);
+    const findEmailDeep = (obj, seen = new Set()) => {
+      if (!obj || typeof obj !== 'object') return null;
+      if (seen.has(obj)) return null;
+      seen.add(obj);
+      for (const k of Object.keys(obj)) {
+        const v = obj[k];
+        if (isValidEmail(v)) return v;
+        if (v && typeof v === 'object') {
+          const found = findEmailDeep(v, seen);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    let detectedEmail = rawEmail;
+
+    // Check several common nested locations that some clients use
+    const getEmailFromCommonPaths = (body) => {
+      if (!body || typeof body !== 'object') return null;
+      const paths = [
+        ['booking', 'email'],
+        ['booking', 'customerEmail'],
+        ['data', 'email'],
+        ['payload', 'email'],
+        ['form', 'email'],
+        ['values', 'email'],
+        ['user', 'email'],
+        ['contact', 'email'],
+      ];
+      for (const p of paths) {
+        let cur = body;
+        for (const k of p) {
+          if (!cur) break;
+          cur = cur[k];
+        }
+        if (cur && typeof cur === 'string' && cur.trim() !== '') return cur;
+      }
+      return null;
+    };
+
+    if (!detectedEmail || (typeof detectedEmail === 'string' && detectedEmail.trim() === '')) {
+      // 1) Try common explicit nested paths
+      const common = getEmailFromCommonPaths(req.body);
+      if (common) detectedEmail = common;
+
+      // 2) Fallback to deep search across the whole body
+      if ((!detectedEmail || (typeof detectedEmail === 'string' && detectedEmail.trim() === '')) ) {
+        const deep = findEmailDeep(req.body);
+        if (deep) detectedEmail = deep;
+      }
+    }
+
+    const email = typeof detectedEmail === 'string' ? detectedEmail.trim() : detectedEmail;
+    const contactNumber = getField(['phone', 'contactNumber', 'contact_number'], '');
+    const alternateContactNumber = getField(['alternatePhone', 'alternateContactNumber', 'alternate_phone'], '');
+    const address = getField(['address', 'customerAddress'], '');
+    const alternateAddress = getField(['alternateAddress', 'alternate_address'], '');
+    const landmark = getField(['landmark'], '');
+    const serialNumber = getField(['serialNumber', 'serial_number', 'serial', 'serialNo', 'serial_no'], null);
+    const city = getField(['city', 'town'], null);
+    const state = getField(['state', 'region'], null);
+    const pinCode = getField(['pinCode', 'pincode', 'pin_code', 'postalCode'], null);
+    const serviceType = getField(['serviceType', 'service_type', 'type'], 'New Installation');
+    const problemDescription = getField(['problemDescription', 'problem_description', 'problem', 'issue'], '');
+    const category = getField(['category', 'categoryId', 'category_id'], null);
+    const categoryName = getField(['categoryName', 'category_name'], getField(['categoryName', 'category_name'], ''));
+    const brand = getField(['brand'], '');
+    const model = getField(['model'], '');
+    const invoiceNumber = getField(['invoiceNo', 'invoiceNumber', 'invoice_no'], '');
+    const preferredDateTime = getField(['preferredAt', 'preferredDateTime', 'preferred_at'], null);
+
+    // If category id missing but categoryName provided, try to resolve id
+    let categoryIdToSave = category;
+    if ((!categoryIdToSave || categoryIdToSave === '') && categoryName) {
+      try {
+        const cat = await Category.findOne({ name: categoryName });
+        if (cat) categoryIdToSave = cat._id;
+      } catch (e) {
+        console.warn('Category lookup failed:', e.message);
+      }
+    }
+
+    // Validate required location and serial fields early to provide immediate feedback
+    if (!serialNumber || !city || !state || !pinCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Serial number, city, state and pinCode are required',
+      });
+    }
+
+    // Map normalized fields into bookingData for persistence
+    const bookingData = {
+      customerName,
+      // Preserve the exact user input email (trimmed). Only populate from the
+      // authenticated user when this is empty.
+      email,
+      contactNumber,
+      alternateContactNumber,
+      address,
+      alternateAddress,
+      landmark,
+      serialNumber,
+      city,
+      state,
+      pinCode,
+      serviceType,
+      problemDescription,
+      category: categoryIdToSave,
+      categoryName,
+      brand,
+      model,
+      invoiceNumber,
+      preferredDateTime,
+      createdBy: req.user?._id || null, // Track who created the booking if available
+    };
+
+    // If email not provided in the request, try to populate it from the authenticated user
+    if ((!bookingData.email || bookingData.email === '') && req.user?._id) {
+      try {
+        // Prefer req.user.email if available on the request object
+        if (req.user.email) {
+          bookingData.email = req.user.email;
+        } else {
+          // Otherwise fetch the full user record to get the email
+          const userRecord = await User.findById(req.user._id).lean();
+          if (userRecord && userRecord.email) bookingData.email = userRecord.email;
+        }
+      } catch (e) {
+        console.warn('Could not populate booking email from user record:', e.message);
+      }
+    }
+
+    // Debug: show resolved email values to help trace empty-email issues
+    console.log("🔍 Resolved booking emails -> formEmail:", rawEmail, "trimmedEmail:", email, "finalBookingEmail:", bookingData.email, "req.user.email:", req.user?.email);
 
     // Create and save booking
     const booking = new Booking(bookingData);
     await booking.save();
 
-    console.log("✅ Booking saved:", booking._id);
+    console.log("✅ Booking saved (pre-refresh):", booking._id);
+
+    // Re-fetch the saved booking from DB to ensure persisted fields (and defaults)
+    const savedBooking = await Booking.findById(booking._id).lean();
+    console.log("🔁 Refetched saved booking:", savedBooking);
 
     // Log booking creation
     await logActivity(
@@ -115,6 +256,38 @@ export const createBooking = async (req, res) => {
           );
         });
     }
+
+    // Trigger booking webhook (async) with required format — use the re-fetched saved booking
+    triggerBookingWebhook(savedBooking)
+      .then((result) => {
+        if (result && result.success) {
+          logActivity(
+            "booking_webhook_sent",
+            `Booking webhook sent for ${booking._id}`,
+            booking._id,
+            { webhookResponse: result.data },
+            "success"
+          );
+        } else {
+          logActivity(
+            "booking_webhook_failed",
+            `Booking webhook failed for ${booking._id}: ${result?.error}`,
+            booking._id,
+            { error: result?.error },
+            "warning"
+          );
+        }
+      })
+      .catch((err) => {
+        console.error('❌ Booking webhook unexpected error:', err.message);
+        logActivity(
+          "booking_webhook_failed",
+          `Booking webhook unexpected error for ${booking._id}: ${err.message}`,
+          booking._id,
+          { error: err.message },
+          "error"
+        );
+      });
 
     // Emit Socket.IO event for real-time updates
     const io = req.app.get("io");

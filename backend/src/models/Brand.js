@@ -17,10 +17,12 @@ const brandSchema = new mongoose.Schema(
       enum: ["whatsapp", "email", "both"],
       default: "email",
     },
-    category: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
-    },
+    categories: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Category",
+      },
+    ], // Array of category references - each brand can serve multiple categories
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
@@ -65,4 +67,3 @@ brandSchema.virtual("communicationMethods").get(function () {
 });
 
 export const Brand = mongoose.model("Brand", brandSchema);
-

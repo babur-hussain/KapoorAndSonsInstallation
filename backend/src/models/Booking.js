@@ -18,6 +18,16 @@ const bookingSchema = new mongoose.Schema(
     address: { type: String, required: true },
     alternateAddress: { type: String },
     landmark: { type: String },
+    serialNumber: { type: String, required: true, alias: 'serial' },
+    city: { type: String, required: true },
+    state: { type: String, required: true },
+    pinCode: { type: String, required: true, alias: 'pincode' },
+    serviceType: { 
+      type: String, 
+      enum: ['New Installation', 'Service Complaint'],
+      default: 'New Installation'
+    },
+    problemDescription: { type: String },
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",

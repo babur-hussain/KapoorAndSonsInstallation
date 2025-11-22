@@ -10,10 +10,11 @@ import {
   Dimensions,
 } from "react-native";
 import { useAuth } from "../../context/AuthContext";
+import { API_BASE_URL } from '../../config/api';
 import socketService from "../../services/socketService";
 import axios from "axios";
 
-const API_BASE_URL = "http://192.168.29.82:4000/api/v1";
+// API base imported from config
 const { width } = Dimensions.get("window");
 
 interface Stats {

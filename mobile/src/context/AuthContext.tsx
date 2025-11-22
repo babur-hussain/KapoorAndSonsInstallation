@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect, ReactNode } from
 import * as SecureStore from "expo-secure-store";
 import axios from "axios";
 import socketService from "../services/socketService";
+import { API_BASE_URL } from "../config/api";
 import { auth } from "../config/firebase";
 import {
   signInWithEmailAndPassword,
@@ -56,8 +57,7 @@ export interface AuthContextType extends AuthState {
 // Create Context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// API Base URL
-const API_BASE_URL = "http://192.168.29.132:4000/api/v1";
+// API Base URL is imported from `src/config/api.ts`
 
 // Secure Storage Keys
 const TOKEN_KEY = "auth_token";

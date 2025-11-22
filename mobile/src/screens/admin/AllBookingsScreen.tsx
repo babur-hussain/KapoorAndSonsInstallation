@@ -10,10 +10,11 @@ import {
   Alert,
 } from "react-native";
 import { useAuth } from "../../context/AuthContext";
+import { API_BASE_URL } from '../../config/api';
 import socketService from "../../services/socketService";
 import axios from "axios";
 
-const API_BASE_URL = "http://192.168.29.132:4000/api/v1";
+// API base imported from config
 
 interface Booking {
   _id: string;

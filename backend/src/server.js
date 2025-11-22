@@ -2,6 +2,7 @@ import http from "http";
 import { Server } from "socket.io";
 import app from "./app.js";
 import { initializeFirebase } from "./config/firebaseAdmin.js";
+import https from "https";
 
 const PORT = process.env.PORT || 4000;
 
@@ -60,5 +61,30 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`→ Email Logs: http://localhost:${PORT}/api/email-hook/logs`);
   console.log(`→ Email Stats: http://localhost:${PORT}/api/email-hook/stats`);
   console.log("=".repeat(60) + "\n");
+  // Fetch and log public IP to help diagnose IP-based network blocks
+  (async function logPublicIp() {
+    try {
+      const ip = await new Promise((resolve, reject) => {
+        const req = https.get('https://api.ipify.org?format=json', (res) => {
+          let data = '';
+          res.on('data', (chunk) => (data += chunk));
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(data);
+              resolve(parsed.ip);
+            } catch (e) {
+              reject(e);
+            }
+          });
+        });
+        req.on('error', reject);
+        req.setTimeout(5000, () => req.destroy(new Error('Timeout fetching public IP')));
+      });
+      console.log(`🌍 Server public IP: ${ip}`);
+      console.log('🔎 If Firebase verifies fail due to IP blocks, ensure this IP has outbound HTTPS access to Google APIs');
+    } catch (e) {
+      console.warn('⚠️ Could not determine public IP:', e.message);
+    }
+  })();
 });
 

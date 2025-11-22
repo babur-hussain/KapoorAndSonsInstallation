@@ -10,15 +10,17 @@ import {
   Alert,
 } from "react-native";
 import { useAuth } from "../../context/AuthContext";
+import { API_BASE_URL } from '../../config/api';
 import socketService from "../../services/socketService";
 import axios from "axios";
 
-const API_BASE_URL = "http://192.168.29.132:4000/api/v1";
+// API base imported from config
 
 interface Booking {
   _id: string;
   customerName: string;
   contactNumber: string;
+  alternateContactNumber?: string;
   address: string;
   alternateAddress?: string;
   landmark?: string;
@@ -271,6 +273,13 @@ const BookingListScreen = ({ navigation }: any) => {
                 <Text style={styles.detailLabel}>Contact:</Text>
                 <Text style={styles.detailValue}>{item.contactNumber}</Text>
               </View>
+
+              {item.alternateContactNumber && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Alternate Contact:</Text>
+                  <Text style={styles.detailValue}>{item.alternateContactNumber}</Text>
+                </View>
+              )}
             </View>
 
             {/* Assigned Staff */}

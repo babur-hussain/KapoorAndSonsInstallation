@@ -7,20 +7,19 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import FormInput from '../components/FormInput';
 import FormPicker from '../components/FormPicker';
 import { submitBooking, BookingFormData } from '../services/api';
+import { API_BASE_URL } from '../config/api';
 import socketService from '../services/socketService';
 
-const API_BASE_URL = 'http://192.168.29.132:4000/api/v1';
+// using centralized API_BASE_URL from `src/config/api.ts`
 
 type BookingFormScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -58,24 +57,36 @@ const validationSchema = Yup.object().shape({
   phone: Yup.string()
     .matches(/^[0-9]{10,}$/, 'Phone number must be at least 10 digits')
     .required('Phone number is required'),
+  alternatePhone: Yup.string()
+    .matches(/^[0-9]{10,}$/, 'Alternate phone must be at least 10 digits')
+    .optional(),
   address: Yup.string()
     .min(10, 'Address must be at least 10 characters')
     .required('Address is required'),
   alternateAddress: Yup.string().optional(),
-  landmark: Yup.string().optional(),
+  landmark: Yup.string().required('Landmark is required'),
+  serialNumber: Yup.string().optional(),
+  city: Yup.string().required('City is required'),
+  state: Yup.string().required('State is required'),
+  pinCode: Yup.string()
+    .matches(/^[0-9]{4,7}$/, 'Pin code must be 4 to 7 digits')
+    .required('Pin code is required'),
+  serviceType: Yup.string()
+    .oneOf(['New Installation', 'Service Complaint'])
+    .required('Service type is required'),
+  problemDescription: Yup.string().when('serviceType', {
+    is: 'Service Complaint',
+    then: (schema) => schema.required('Problem description is required for service complaints'),
+    otherwise: (schema) => schema.optional(),
+  }),
   category: Yup.string().required('Category is required'),
   brand: Yup.string().required('Brand is required'),
   model: Yup.string()
     .min(2, 'Model must be at least 2 characters')
     .required('Model is required'),
-  invoiceNo: Yup.string(),
-  preferredAt: Yup.date().nullable(),
 });
 
 export default function BookingFormScreen({ navigation }: Props) {
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [tempDate, setTempDate] = useState(new Date());
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
@@ -87,14 +98,19 @@ export default function BookingFormScreen({ navigation }: Props) {
     name: '',
     email: '',
     phone: '',
+    alternatePhone: '',
     address: '',
     alternateAddress: '',
     landmark: '',
+    serialNumber: '',
+    city: '',
+    state: '',
+    pinCode: '',
+    serviceType: '',
+    problemDescription: '',
     category: '',
     brand: '',
     model: '',
-    invoiceNo: '',
-    preferredAt: null as Date | null,
   };
 
   // Fetch categories from API
@@ -126,7 +142,7 @@ export default function BookingFormScreen({ navigation }: Props) {
     }
   };
 
-  // Fetch brands from API
+  // Fetch brands from API (all brands initially)
   const fetchBrands = async () => {
     try {
       setLoadingBrands(true);
@@ -149,6 +165,33 @@ export default function BookingFormScreen({ navigation }: Props) {
       console.error('❌ Error fetching brands:', error);
       console.error('❌ Error details:', error.message, error.code);
       // Fallback to empty array if API fails
+      setBrandOptions([]);
+    } finally {
+      setLoadingBrands(false);
+    }
+  };
+
+  // Fetch brands by specific category
+  const fetchBrandsByCategory = async (categoryId: string) => {
+    try {
+      setLoadingBrands(true);
+      const url = `${API_BASE_URL}/brands/category/${categoryId}`;
+      console.log('🔍 Fetching brands for category:', categoryId);
+      const response = await axios.get(url);
+      console.log('📦 Category brands response:', response.data);
+
+      if (response.data.success && response.data.data) {
+        const fetchedBrands: Brand[] = response.data.data;
+        setBrands(fetchedBrands);
+
+        // Extract brand names for picker
+        const names = fetchedBrands.map((brand) => brand.name);
+        setBrandOptions(names);
+
+        console.log('✅ Brands for category loaded:', names);
+      }
+    } catch (error: any) {
+      console.error('❌ Error fetching brands for category:', error);
       setBrandOptions([]);
     } finally {
       setLoadingBrands(false);
@@ -194,18 +237,32 @@ export default function BookingFormScreen({ navigation }: Props) {
     { setSubmitting }: any
   ) => {
     try {
+      // Find category ID from category name
+      const selectedCategory = categories.find(c => c.name === values.category);
+      const categoryId = selectedCategory?._id;
+
+      if (!categoryId && values.category) {
+        throw new Error('Invalid category selected');
+      }
+
       // Prepare data for API
       const bookingData: BookingFormData = {
         name: values.name,
         phone: values.phone,
+        alternatePhone: values.alternatePhone || undefined,
         address: values.address,
         alternateAddress: values.alternateAddress || undefined,
         landmark: values.landmark || undefined,
-        category: values.category || undefined,
+        serialNumber: values.serialNumber || undefined,
+        city: values.city || undefined,
+        state: values.state || undefined,
+        pinCode: values.pinCode || undefined,
+        serviceType: values.serviceType,
+        problemDescription: values.serviceType === 'Service Complaint' ? values.problemDescription : undefined,
+        category: categoryId,
+        categoryName: values.category,
         brand: values.brand,
         model: values.model,
-        invoiceNo: values.invoiceNo || undefined,
-        preferredAt: values.preferredAt?.toISOString(),
       };
 
       console.log('Submitting booking:', bookingData);
@@ -293,6 +350,17 @@ export default function BookingFormScreen({ navigation }: Props) {
             />
 
             <FormInput
+              label="Alternate Contact Number (Optional)"
+              value={values.alternatePhone}
+              onChangeText={handleChange('alternatePhone')}
+              onBlur={() => handleBlur('alternatePhone')}
+              placeholder="Enter alternate 10-digit phone number"
+              keyboardType="phone-pad"
+              error={errors.alternatePhone}
+              touched={touched.alternatePhone}
+            />
+
+            <FormInput
               label="Address *"
               value={values.address}
               onChangeText={handleChange('address')}
@@ -315,12 +383,85 @@ export default function BookingFormScreen({ navigation }: Props) {
             />
 
             <FormInput
-              label="Landmark (Optional)"
+              label="Landmark *"
               value={values.landmark}
               onChangeText={handleChange('landmark')}
               onBlur={() => handleBlur('landmark')}
               placeholder="Enter nearby landmark or location reference"
+              error={errors.landmark}
+              touched={touched.landmark}
             />
+
+            <FormInput
+              label="Serial Number (Optional)"
+              value={values.serialNumber}
+              onChangeText={handleChange('serialNumber')}
+              onBlur={() => handleBlur('serialNumber')}
+              placeholder="Enter product serial number"
+              error={errors.serialNumber}
+              touched={touched.serialNumber}
+            />
+
+            <FormInput
+              label="City *"
+              value={values.city}
+              onChangeText={handleChange('city')}
+              onBlur={() => handleBlur('city')}
+              placeholder="Enter city"
+              error={errors.city}
+              touched={touched.city}
+            />
+
+            <FormInput
+              label="State *"
+              value={values.state}
+              onChangeText={handleChange('state')}
+              onBlur={() => handleBlur('state')}
+              placeholder="Enter state"
+              error={errors.state}
+              touched={touched.state}
+            />
+
+            <FormInput
+              label="Pin Code *"
+              value={values.pinCode}
+              onChangeText={handleChange('pinCode')}
+              onBlur={() => handleBlur('pinCode')}
+              placeholder="Enter pin / postal code"
+              keyboardType="numeric"
+              error={errors.pinCode}
+              touched={touched.pinCode}
+            />
+
+            <FormPicker
+              label="Service Type *"
+              value={values.serviceType}
+              onValueChange={(value) => {
+                setFieldValue('serviceType', value);
+                // Clear problem description if switching to New Installation
+                if (value === 'New Installation') {
+                  setFieldValue('problemDescription', '');
+                }
+              }}
+              options={['New Installation', 'Service Complaint']}
+              placeholder="Select service type"
+              error={errors.serviceType}
+              touched={touched.serviceType}
+            />
+
+            {values.serviceType === 'Service Complaint' && (
+              <FormInput
+                label="Problem Description *"
+                value={values.problemDescription}
+                onChangeText={handleChange('problemDescription')}
+                onBlur={() => handleBlur('problemDescription')}
+                placeholder="Describe the problem you're experiencing"
+                multiline
+                numberOfLines={4}
+                error={errors.problemDescription}
+                touched={touched.problemDescription}
+              />
+            )}
 
             {loadingCategories ? (
               <View style={styles.loadingContainer}>
@@ -333,8 +474,14 @@ export default function BookingFormScreen({ navigation }: Props) {
                 value={values.category}
                 onValueChange={(value) => {
                   setFieldValue('category', value);
-                  // Manually trigger touched state
-                  setFieldValue('category', value, true);
+                  // Fetch brands for selected category
+                  const selectedCategory = categories.find(c => c.name === value);
+                  if (selectedCategory && selectedCategory._id) {
+                    fetchBrandsByCategory(selectedCategory._id);
+                  } else {
+                    // If no category selected, clear brands
+                    setBrandOptions([]);
+                  }
                 }}
                 options={categoryOptions}
                 placeholder={categoryOptions.length > 0 ? "Select a category" : "No categories available"}
@@ -373,107 +520,6 @@ export default function BookingFormScreen({ navigation }: Props) {
               error={errors.model}
               touched={touched.model}
             />
-
-            <FormInput
-              label="Invoice Number (Optional)"
-              value={values.invoiceNo}
-              onChangeText={handleChange('invoiceNo')}
-              onBlur={() => handleBlur('invoiceNo')}
-              placeholder="Enter invoice number if available"
-            />
-
-            {/* Date/Time Picker */}
-            <View style={styles.datePickerContainer}>
-              <Text style={styles.label}>Preferred Date/Time (Optional)</Text>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => {
-                  setTempDate(values.preferredAt || new Date());
-                  setShowDatePicker(true);
-                }}
-              >
-                <Text style={styles.dateButtonText}>
-                  {values.preferredAt
-                    ? values.preferredAt.toLocaleString()
-                    : 'Select date and time'}
-                </Text>
-                <Text style={styles.calendarIcon}>📅</Text>
-              </TouchableOpacity>
-
-              {values.preferredAt && (
-                <TouchableOpacity
-                  style={styles.clearButton}
-                  onPress={() => setFieldValue('preferredAt', null)}
-                >
-                  <Text style={styles.clearButtonText}>Clear</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {showDatePicker && Platform.OS === 'android' && (
-              <DateTimePicker
-                value={tempDate}
-                mode="date"
-                display="default"
-                onChange={(_event, selectedDate) => {
-                  setShowDatePicker(false);
-                  if (selectedDate) {
-                    setTempDate(selectedDate);
-                    setShowTimePicker(true);
-                  }
-                }}
-                minimumDate={new Date()}
-              />
-            )}
-
-            {showTimePicker && Platform.OS === 'android' && (
-              <DateTimePicker
-                value={tempDate}
-                mode="time"
-                display="default"
-                onChange={(_event, selectedTime) => {
-                  setShowTimePicker(false);
-                  if (selectedTime) {
-                    setFieldValue('preferredAt', selectedTime);
-                  }
-                }}
-              />
-            )}
-
-            {showDatePicker && Platform.OS === 'ios' && (
-              <View style={styles.iosDatePickerContainer}>
-                <DateTimePicker
-                  value={tempDate}
-                  mode="datetime"
-                  display="spinner"
-                  onChange={(_event, selectedDate) => {
-                    if (selectedDate) {
-                      setTempDate(selectedDate);
-                    }
-                  }}
-                  minimumDate={new Date()}
-                />
-                <View style={styles.iosDatePickerButtons}>
-                  <TouchableOpacity
-                    style={styles.datePickerButton}
-                    onPress={() => setShowDatePicker(false)}
-                  >
-                    <Text style={styles.datePickerButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.datePickerButton, styles.datePickerConfirm]}
-                    onPress={() => {
-                      setFieldValue('preferredAt', tempDate);
-                      setShowDatePicker(false);
-                    }}
-                  >
-                    <Text style={[styles.datePickerButtonText, styles.confirmText]}>
-                      Confirm
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
 
             {/* Submit Button */}
             <TouchableOpacity
@@ -522,81 +568,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#7f8c8d',
     marginBottom: 24,
-  },
-  datePickerContainer: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: 8,
-  },
-  dateButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dateButtonText: {
-    fontSize: 16,
-    color: '#2c3e50',
-  },
-  calendarIcon: {
-    fontSize: 20,
-  },
-  clearButton: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#e74c3c',
-    borderRadius: 6,
-  },
-  clearButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  iosDatePickerContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  iosDatePickerButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
-    gap: 10,
-  },
-  datePickerButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#ecf0f1',
-    alignItems: 'center',
-  },
-  datePickerConfirm: {
-    backgroundColor: '#3498db',
-  },
-  datePickerButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#7f8c8d',
-  },
-  confirmText: {
-    color: '#fff',
   },
   submitButton: {
     backgroundColor: '#27ae60',

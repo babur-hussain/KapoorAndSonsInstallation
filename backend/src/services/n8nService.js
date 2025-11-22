@@ -1,5 +1,6 @@
 import axios from "axios";
 import { Brand } from "../models/Brand.js";
+import { User } from "../models/User.js";
 
 /**
  * n8n Webhook Service
@@ -147,6 +148,100 @@ export async function triggerCustomEmail(emailData) {
       success: false,
       error: error.message,
     };
+  }
+}
+
+/**
+ * Trigger booking webhook with full booking payload for external systems
+ * @param {Object} booking - Mongoose booking document
+ * @param {string} webhookUrl - webhook URL to post to (optional, uses env var)
+ * @returns {Promise<Object>} Response from webhook
+ */
+export async function triggerBookingWebhook(booking, webhookUrl) {
+  try {
+    // Allow forcing the webhook target via environment variable for testing
+    // If not forced, prefer an explicitly passed `webhookUrl`, then `N8N_BOOKING_WEBHOOK_URL`,
+    // and finally a sensible default.
+    const forcedEnvUrl = process.env.FORCE_BOOKING_WEBHOOK_URL;
+    const defaultBookingWebhook = process.env.N8N_BOOKING_WEBHOOK_URL || 'http://localhost:5678/webhook/booking-webhook';
+    const url = forcedEnvUrl || webhookUrl || defaultBookingWebhook;
+
+    // Get brand details to attach company info
+    const brand = await Brand.findOne({ name: booking.brand });
+
+    const companyEmail = brand?.contactEmail || process.env.EMAIL_FROM || '';
+    const companyWhatsapp = brand?.whatsappNumber || process.env.TWILIO_WHATSAPP_NUMBER || '';
+
+    // Determine company preference
+    const prefArray = brand?.preferredCommunication || [];
+    const companyPreference = {
+      email: Boolean(prefArray.includes('email') || brand?.communicationMode === 'email' || brand?.communicationMode === 'both'),
+      whatsapp: Boolean(prefArray.includes('whatsapp') || brand?.communicationMode === 'whatsapp' || brand?.communicationMode === 'both'),
+    };
+
+    // Build bookingDetails payload using variables exactly as requested
+    const bookingDetails = {
+      _id: booking._id.toString(),
+      customerName: booking.customerName || '',
+      email: booking.email || '',
+      contactNumber: booking.contactNumber || '',
+      alternateContactNumber: booking.alternateContactNumber || '',
+      categoryName: booking.categoryName || '',
+      address: booking.address || '',
+      landmark: booking.landmark || '',
+      serialNumber: booking.serialNumber || '',
+      city: booking.city || '',
+      state: booking.state || '',
+      pinCode: booking.pinCode || '',
+      pincode: booking.pinCode || '',
+      serviceType: booking.serviceType || 'New Installation',
+      problemDescription: booking.problemDescription || '',
+      brand: booking.brand || '',
+      model: booking.model || '',
+      invoiceNumber: booking.invoiceNumber || '',
+      preferredDateTime: booking.preferredDateTime ? new Date(booking.preferredDateTime).toISOString() : null,
+      createdAt: booking.createdAt ? new Date(booking.createdAt).toISOString() : new Date().toISOString(),
+    };
+
+    // If email is empty in booking, try to resolve from createdBy user
+    if ((!booking.email || booking.email === '') && booking.createdBy) {
+      try {
+        const user = await User.findById(booking.createdBy).lean();
+        if (user && user.email) {
+          bookingDetails.email = user.email;
+        }
+      } catch (e) {
+        console.warn('Could not resolve user email for webhook payload:', e.message);
+      }
+    }
+
+    const payload = {
+      body: {
+        bookingDetails,
+        companyEmail,
+        companyWhatsapp,
+        companyPreference,
+      },
+    };
+
+    const urlLabel = forcedEnvUrl ? '(FORCED via FORCE_BOOKING_WEBHOOK_URL)' : webhookUrl ? '(from parameter)' : '(default/N8N_BOOKING_WEBHOOK_URL)';
+    console.log('📤 Sending booking webhook to', url, urlLabel);
+    console.log(JSON.stringify(payload, null, 2));
+
+    const response = await axios.post(url, payload, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 10000,
+    });
+
+    console.log('✅ Booking webhook sent, status:', response.status);
+    return { success: true, status: response.status, data: response.data };
+  } catch (error) {
+    console.error('❌ Booking webhook error:', error.message);
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+    }
+    return { success: false, error: error.message };
   }
 }
 
