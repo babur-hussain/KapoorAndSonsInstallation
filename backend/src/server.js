@@ -5,6 +5,8 @@ import { initializeFirebase } from "./config/firebaseAdmin.js";
 import https from "https";
 
 const PORT = process.env.PORT || 4000;
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || `http://localhost:${PORT}`;
+const PUBLIC_API_URL = `${PUBLIC_BASE_URL.replace(/\/$/, "")}/api/v1`;
 
 // Initialize Firebase Admin SDK
 initializeFirebase();
@@ -49,17 +51,17 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log("🚀 KAPOOR & SONS DEMO BOOKING SYSTEM");
   console.log("=".repeat(60));
   console.log(`✅ Server running on port ${PORT}`);
-  console.log(`📊 AdminJS Dashboard: http://localhost:${PORT}/admin`);
-  console.log(`🔗 API Endpoint: http://localhost:${PORT}/api/v1/bookings`);
-  console.log(`📱 Mobile API: http://192.168.29.132:${PORT}/api/v1`);
+  console.log(`📊 AdminJS Dashboard: ${PUBLIC_BASE_URL}/admin`);
+  console.log(`🔗 API Endpoint: ${PUBLIC_API_URL}/bookings`);
+  console.log(`📱 Mobile API Base: ${PUBLIC_API_URL}`);
   console.log(`⚡ Socket.IO enabled for real-time updates`);
   console.log("\n" + "-".repeat(60));
   console.log("📧 EMAIL AUTOMATION LIVE");
   console.log("-".repeat(60));
   console.log(`→ N8N Webhook: ${process.env.N8N_WEBHOOK_URL || "http://localhost:5678/webhook/send-email"}`);
-  console.log(`→ Email Hook: http://localhost:${PORT}/api/email-hook`);
-  console.log(`→ Email Logs: http://localhost:${PORT}/api/email-hook/logs`);
-  console.log(`→ Email Stats: http://localhost:${PORT}/api/email-hook/stats`);
+  console.log(`→ Email Hook: ${PUBLIC_API_URL.replace('/api/v1', '')}/api/email-hook`);
+  console.log(`→ Email Logs: ${PUBLIC_API_URL.replace('/api/v1', '')}/api/email-hook/logs`);
+  console.log(`→ Email Stats: ${PUBLIC_API_URL.replace('/api/v1', '')}/api/email-hook/stats`);
   console.log("=".repeat(60) + "\n");
   // Fetch and log public IP to help diagnose IP-based network blocks
   (async function logPublicIp() {

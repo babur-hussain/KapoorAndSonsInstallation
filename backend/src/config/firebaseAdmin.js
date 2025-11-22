@@ -22,29 +22,43 @@ export const initializeFirebase = async () => {
   }
 
   try {
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
     const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
 
     // Check if Firebase is configured
-    if (!serviceAccountPath) {
-      console.warn("⚠️  FIREBASE_SERVICE_ACCOUNT_PATH not set. Firebase authentication disabled.");
+    if (!serviceAccountPath && !serviceAccountJson) {
+      console.warn("⚠️  FIREBASE service account not configured. Set FIREBASE_SERVICE_ACCOUNT_PATH or FIREBASE_SERVICE_ACCOUNT_JSON. Firebase authentication disabled.");
       return;
     }
 
-    // Resolve path relative to project root
-    const absolutePath = path.resolve(process.cwd(), serviceAccountPath);
+    let serviceAccount;
 
-    // Check if service account file exists
-    if (!fs.existsSync(absolutePath)) {
-      console.warn(`⚠️  Firebase service account file not found at: ${absolutePath}`);
-      console.warn("⚠️  Firebase authentication disabled. To enable:");
-      console.warn("   1. Download service account JSON from Firebase Console");
-      console.warn("   2. Save it to: backend/config/firebase-service-account.json");
-      console.warn("   3. Restart the server");
-      return;
+    if (serviceAccountJson) {
+      try {
+        serviceAccount = JSON.parse(serviceAccountJson);
+        console.log("🔐 Using Firebase credentials from FIREBASE_SERVICE_ACCOUNT_JSON");
+      } catch (jsonErr) {
+        console.error("❌ Invalid FIREBASE_SERVICE_ACCOUNT_JSON provided:", jsonErr.message);
+        return;
+      }
+    } else if (serviceAccountPath) {
+      // Resolve path relative to project root
+      const absolutePath = path.resolve(process.cwd(), serviceAccountPath);
+
+      // Check if service account file exists
+      if (!fs.existsSync(absolutePath)) {
+        console.warn(`⚠️  Firebase service account file not found at: ${absolutePath}`);
+        console.warn("⚠️  Firebase authentication disabled. To enable:");
+        console.warn("   1. Download service account JSON from Firebase Console");
+        console.warn("   2. Save it to: backend/config/firebase-service-account.json");
+        console.warn("   3. Restart the server");
+        return;
+      }
+
+      // Read and parse service account
+      serviceAccount = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
+      console.log(`🔐 Using Firebase credentials from file: ${absolutePath}`);
     }
-
-    // Read and parse service account
-    const serviceAccount = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
 
     // Initialize Firebase Admin
     admin.initializeApp({

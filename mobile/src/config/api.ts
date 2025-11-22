@@ -23,8 +23,8 @@ const getApiHost = (): string => {
     return `http://${devHost}:${port}`;
   }
 
-  // 3. Fallback for production (update this with your live server URL)
-  return 'http://192.168.29.132:4000';
+  // 3. Fallback for production (live Render deployment)
+  return 'https://kapoorandsonsinstallation.onrender.com';
 };
 
 export const API_HOST = getApiHost();
