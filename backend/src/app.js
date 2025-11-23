@@ -10,7 +10,6 @@ import adminStatsRoutes from "./routes/adminStats.js";
 import statsRoutes from "./routes/statsRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import emailHookRoutes from "./routes/emailHookRoutes.js";
-import { admin, adminRouter } from "./admin/admin.js";
 
 dotenv.config();
 connectDB();
@@ -42,8 +41,13 @@ app.use("/api/v1/admin/stats", adminStatsRoutes);
 // Email Hook Routes (for n8n automation)
 app.use("/api", emailHookRoutes);
 
-// AdminJS Dashboard
-app.use(admin.options.rootPath, adminRouter);
+// AdminJS Dashboard (can be disabled in low-memory environments)
+if (process.env.DISABLE_ADMIN_DASHBOARD === "true") {
+  console.warn("⚠️ Admin dashboard disabled via DISABLE_ADMIN_DASHBOARD env var");
+} else {
+  const { admin, adminRouter } = await import("./admin/admin.js");
+  app.use(admin.options.rootPath, adminRouter);
+}
 
 export default app;
 
