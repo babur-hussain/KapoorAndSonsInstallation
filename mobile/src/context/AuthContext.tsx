@@ -95,7 +95,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Configure axios interceptor for token
   useEffect(() => {
-    axios.defaults.timeout = 10000;
+    // Give the hosted backend more time to wake up (Render free tier can be slow)
+    axios.defaults.timeout = 20000;
 
     if (token) {
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
@@ -127,7 +128,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   /**
    * Authenticate with backend using Firebase ID token
    */
-  const authenticateWithBackend = async (firebaseIdToken: string) => {
+  const authenticateWithBackend = async (firebaseIdToken: string, attempt = 1): Promise<void> => {
     try {
       // Store the Firebase token
       setToken(firebaseIdToken);
@@ -158,6 +159,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error: any) {
       console.error("❌ Backend authentication failed:", error.response?.data?.message || error.message);
+
+      if (attempt < 3) {
+        // Retry with backoff in case the server is still warming up
+        const delay = attempt * 2000;
+        console.log(`🔁 Retrying backend auth (attempt ${attempt + 1}/3) after ${delay}ms`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return authenticateWithBackend(firebaseIdToken, attempt + 1);
+      }
+
       setIsLoading(false);
       throw error;
     }
