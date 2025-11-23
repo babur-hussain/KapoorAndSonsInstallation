@@ -34,6 +34,7 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
+      "apiUrl": "https://kapoorandsonsinstallation.onrender.com",
       "eas": {
         "projectId": "kapoor-sons-demo"
       }
