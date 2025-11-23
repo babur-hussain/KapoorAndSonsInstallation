@@ -1,0 +1,26 @@
+
+> kapoor-backend@0.1.0 start
+> node src/server.js
+
+🔥 Firebase Admin SDK initialized successfully
+
+============================================================
+🚀 KAPOOR & SONS DEMO BOOKING SYSTEM
+============================================================
+✅ Server running on port 4000
+📊 AdminJS Dashboard: http://localhost:4000/admin
+🔗 API Endpoint: http://localhost:4000/api/v1/bookings
+📱 Mobile API: http://192.168.29.132:4000/api/v1
+⚡ Socket.IO enabled for real-time updates
+
+------------------------------------------------------------
+📧 EMAIL AUTOMATION LIVE
+------------------------------------------------------------
+→ N8N Webhook: http://localhost:5678/webhook/send-booking-email
+→ Email Hook: http://localhost:4000/api/email-hook
+→ Email Logs: http://localhost:4000/api/email-hook/logs
+→ Email Stats: http://localhost:4000/api/email-hook/stats
+============================================================
+
+✅ MongoDB connected
+❌ Firebase token verification failed: Firebase ID token has no "kid" claim. See https://firebase.google.com/docs/auth/admin/verify-id-tokens for details on how to retrieve an ID token.

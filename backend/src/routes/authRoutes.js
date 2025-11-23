@@ -1,6 +1,7 @@
 import express from "express";
 import { User } from "../models/User.js";
 import { firebaseAuth } from "../middleware/firebaseAuth.js";
+import { generateToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 

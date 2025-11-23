@@ -42,8 +42,13 @@ app.use("/api/v1/admin/stats", adminStatsRoutes);
 app.use("/api", emailHookRoutes);
 
 // AdminJS Dashboard (can be disabled in low-memory environments)
-if (process.env.DISABLE_ADMIN_DASHBOARD === "true") {
-  console.warn("⚠️ Admin dashboard disabled via DISABLE_ADMIN_DASHBOARD env var");
+// Default to disabled on Render free tier to avoid OOM crashes
+const shouldDisableAdmin = 
+  process.env.DISABLE_ADMIN_DASHBOARD === "true" || 
+  process.env.RENDER === "true";
+
+if (shouldDisableAdmin) {
+  console.warn("⚠️ Admin dashboard disabled (low memory environment detected)");
 } else {
   const { admin, adminRouter } = await import("./admin/admin.js");
   app.use(admin.options.rootPath, adminRouter);
