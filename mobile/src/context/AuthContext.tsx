@@ -158,7 +158,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsLoading(false);
       }
     } catch (error: any) {
-      console.error("❌ Backend authentication failed:", error.response?.data?.message || error.message);
+      const status = error.response?.status;
+      const statusText = error.response?.statusText;
+      console.error(
+        "❌ Backend authentication failed:",
+        status ? `${status} ${statusText || ''}`.trim() : (error.response?.data?.message || error.message)
+      );
 
       if (attempt < 3) {
         // Retry with backoff in case the server is still warming up
