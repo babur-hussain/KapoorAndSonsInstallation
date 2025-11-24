@@ -159,12 +159,8 @@ export async function triggerCustomEmail(emailData) {
  */
 export async function triggerBookingWebhook(booking, webhookUrl) {
   try {
-    // Allow forcing the webhook target via environment variable for testing
-    // If not forced, prefer an explicitly passed `webhookUrl`, then `N8N_BOOKING_WEBHOOK_URL`,
-    // and finally a sensible default.
-    const forcedEnvUrl = process.env.FORCE_BOOKING_WEBHOOK_URL;
-    const defaultBookingWebhook = process.env.N8N_BOOKING_WEBHOOK_URL || 'http://localhost:5678/webhook/booking-webhook';
-    const url = forcedEnvUrl || webhookUrl || defaultBookingWebhook;
+    // Use the production webhook URL as default
+    const url = 'https://n8n.srv1148852.hstgr.cloud/webhook/booking-webhook';
 
     // Get brand details to attach company info
     const brand = await Brand.findOne({ name: booking.brand });
@@ -224,7 +220,7 @@ export async function triggerBookingWebhook(booking, webhookUrl) {
       },
     };
 
-    const urlLabel = forcedEnvUrl ? '(FORCED via FORCE_BOOKING_WEBHOOK_URL)' : webhookUrl ? '(from parameter)' : '(default/N8N_BOOKING_WEBHOOK_URL)';
+    const urlLabel = '(production webhook)';
     console.log('📤 Sending booking webhook to', url, urlLabel);
     console.log(JSON.stringify(payload, null, 2));
 
