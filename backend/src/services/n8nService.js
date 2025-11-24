@@ -191,7 +191,9 @@ export async function triggerBookingWebhook(booking, webhookUrl) {
       pinCode: booking.pinCode || '',
       pincode: booking.pinCode || '',
       serviceType: booking.serviceType || 'New Installation',
-      problemDescription: booking.problemDescription || '',
+      problemDescription: booking.serviceType === 'Service Complaint' && booking.problemDescription 
+        ? `Problem: ${booking.problemDescription}` 
+        : (booking.problemDescription || ''),
       brand: booking.brand || '',
       model: booking.model || '',
       invoiceNumber: booking.invoiceNumber || '',
