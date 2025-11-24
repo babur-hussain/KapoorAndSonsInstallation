@@ -139,11 +139,11 @@ export const createBooking = async (req, res) => {
       }
     }
 
-    // Validate required location and serial fields early to provide immediate feedback
-    if (!serialNumber || !city || !state || !pinCode) {
+    // Validate required location fields early to provide immediate feedback
+    if (!city || !state || !pinCode) {
       return res.status(400).json({
         success: false,
-        message: 'Serial number, city, state and pinCode are required',
+        message: 'City, state and pinCode are required',
       });
     }
 
