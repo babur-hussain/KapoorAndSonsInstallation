@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useAuth } from "../../context/AuthContext";
 import { API_BASE_URL } from '../../config/api';
+import { getBookingEmails } from '../../services/api';
 import socketService from "../../services/socketService";
 import axios from "axios";
 
@@ -56,6 +57,19 @@ const BookingListScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [bookingEmails, setBookingEmails] = useState<{ [key: string]: any[] }>({});
+  const [emailsLoading, setEmailsLoading] = useState<{ [key: string]: boolean }>({});
+  const fetchBookingEmails = async (bookingId: string) => {
+    setEmailsLoading(prev => ({ ...prev, [bookingId]: true }));
+    try {
+      const emails = await getBookingEmails(bookingId, token);
+      setBookingEmails(prev => ({ ...prev, [bookingId]: emails }));
+    } catch (err) {
+      setBookingEmails(prev => ({ ...prev, [bookingId]: [] }));
+    } finally {
+      setEmailsLoading(prev => ({ ...prev, [bookingId]: false }));
+    }
+  };
 
   const fetchBookings = async () => {
     try {
@@ -130,6 +144,7 @@ const BookingListScreen = ({ navigation }: any) => {
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
+    if (expandedId !== id) fetchBookingEmails(id);
   };
 
   const getStatusColor = (status: string) => {
@@ -220,65 +235,78 @@ const BookingListScreen = ({ navigation }: any) => {
             {/* Booking Details */}
             <View style={styles.detailSection}>
               <Text style={styles.sectionTitle}>Booking Details</Text>
-
+              {/* ...existing code... */}
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Category:</Text>
                 <Text style={styles.detailValue}>
                   {item.category?.name || item.categoryName || "N/A"}
                 </Text>
               </View>
-
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Brand:</Text>
                 <Text style={styles.detailValue}>{item.brand}</Text>
               </View>
-
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Model:</Text>
                 <Text style={styles.detailValue}>{item.model}</Text>
               </View>
-
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Invoice Number:</Text>
                 <Text style={styles.detailValue}>{item.invoiceNumber || "N/A"}</Text>
               </View>
-
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Preferred Date:</Text>
                 <Text style={styles.detailValue}>
                   {item.preferredDateTime ? formatDate(item.preferredDateTime) : "Not specified"}
                 </Text>
               </View>
-
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Address:</Text>
                 <Text style={styles.detailValue}>{item.address}</Text>
               </View>
-
               {item.alternateAddress && (
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Alternate Address:</Text>
                   <Text style={styles.detailValue}>{item.alternateAddress}</Text>
                 </View>
               )}
-
               {item.landmark && (
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Landmark:</Text>
                   <Text style={styles.detailValue}>{item.landmark}</Text>
                 </View>
               )}
-
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Contact:</Text>
                 <Text style={styles.detailValue}>{item.contactNumber}</Text>
               </View>
-
               {item.alternateContactNumber && (
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Alternate Contact:</Text>
                   <Text style={styles.detailValue}>{item.alternateContactNumber}</Text>
                 </View>
+              )}
+            </View>
+
+            {/* Email Replies Section */}
+            <View style={styles.detailSection}>
+              <Text style={styles.sectionTitle}>Email Communication</Text>
+              {emailsLoading[item._id] ? (
+                <ActivityIndicator size="small" color="#2196F3" />
+              ) : bookingEmails[item._id]?.length > 0 ? (
+                bookingEmails[item._id].map((email, idx) => (
+                  <View key={email._id || idx} style={styles.emailItem}>
+                    <Text style={styles.emailMeta}>
+                      <Text style={{ fontWeight: 'bold' }}>{email.emailType === 'reply' ? 'Reply' : email.emailType === 'outgoing' ? 'Sent' : 'Received'}:</Text>
+                      {' '}From: {email.from} | {new Date(email.timestamp).toLocaleString()}
+                    </Text>
+                    <Text style={styles.emailSubject}>{email.subject}</Text>
+                    <Text style={styles.emailBody}>{email.replyText}</Text>
+                    <View style={styles.emailDivider} />
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.emailEmpty}>No email replies yet.</Text>
               )}
             </View>
 
@@ -393,6 +421,49 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   createButton: {
+    backgroundColor: "#2196F3",
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  emailItem: {
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  emailMeta: {
+    fontSize: 13,
+    color: '#555',
+    marginBottom: 2,
+  },
+  emailSubject: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginBottom: 2,
+    color: '#222',
+  },
+  emailBody: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 4,
+  },
+  emailDivider: {
+    height: 1,
+    backgroundColor: '#eee',
+    marginVertical: 4,
+  },
+  emailEmpty: {
+    fontSize: 13,
+    color: '#888',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
     backgroundColor: "#2196F3",
     paddingHorizontal: 32,
     paddingVertical: 12,

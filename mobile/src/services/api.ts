@@ -64,6 +64,14 @@ export const submitBooking = async (data: BookingFormData): Promise<BookingRespo
   }
 };
 
+// Fetch email thread for a booking
+export async function getBookingEmails(bookingId: string, token: string) {
+  const response = await axios.get(`${API_BASE_URL}/bookings/${bookingId}/emails`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data.data?.emails || [];
+}
+
 // Legacy API object (keeping for backward compatibility)
 export const api = {
   // Get bookings count

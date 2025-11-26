@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SuccessAnimation from '../components/SuccessAnimation';
 import {
   View,
   Text,
@@ -93,6 +94,7 @@ export default function BookingFormScreen({ navigation }: Props) {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loadingBrands, setLoadingBrands] = useState(true);
   const [brandOptions, setBrandOptions] = useState<string[]>([]);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const initialValues = {
     name: '',
@@ -270,17 +272,8 @@ export default function BookingFormScreen({ navigation }: Props) {
       // Submit to backend
       const response = await submitBooking(bookingData);
 
-      // Show success alert
-      Alert.alert(
-        'Success',
-        'Booking submitted successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      // Show success animation
+      setShowSuccess(true);
     } catch (error: any) {
       console.error('Submission error:', error);
       Alert.alert(
@@ -299,45 +292,55 @@ export default function BookingFormScreen({ navigation }: Props) {
       onSubmit={handleSubmit}
     >
       {({
-        values,
-        errors,
-        touched,
-        handleChange,
-        handleBlur,
-        handleSubmit,
-        setFieldValue,
-        isSubmitting,
-      }) => (
-        <ScrollView
-          style={styles.container}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.content}>
-            <Text style={styles.title}>Book a Demo</Text>
-            <Text style={styles.subtitle}>Fill in your details below</Text>
-
-            <FormInput
-              label="Customer Name *"
-              value={values.name}
-              onChangeText={handleChange('name')}
-              onBlur={() => handleBlur('name')}
-              placeholder="Enter your full name"
-              error={errors.name}
-              touched={touched.name}
-            />
-
-            <FormInput
-              label="Email Address (Optional)"
-              value={values.email}
-              onChangeText={handleChange('email')}
-              onBlur={() => handleBlur('email')}
-              placeholder="Enter your email address"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              error={errors.email}
-              touched={touched.email}
-            />
-
+        return (
+          <>
+            <Formik
+              initialValues={initialValues}
+              validationSchema={validationSchema}
+              onSubmit={handleSubmit}
+            >
+              {({
+                values,
+                errors,
+                touched,
+                handleChange,
+                handleBlur,
+                handleSubmit,
+                setFieldValue,
+                isSubmitting,
+              }) => (
+                <ScrollView
+                  style={styles.container}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  <View style={styles.content}>
+                    <Text style={styles.title}>Book a Demo</Text>
+                    <Text style={styles.subtitle}>Fill in your details below</Text>
+                    <FormInput
+                      label="Customer Name *"
+                      value={values.name}
+                      onChangeText={handleChange('name')}
+                      onBlur={() => handleBlur('name')}
+                      placeholder="Enter your name"
+                      error={errors.name}
+                      touched={touched.name}
+                    />
+                    {/* ...existing code... */}
+                  </View>
+                </ScrollView>
+              )}
+            </Formik>
+            {showSuccess && (
+              <SuccessAnimation
+                message="Booking submitted successfully!"
+                onComplete={() => {
+                  setShowSuccess(false);
+                  navigation.goBack();
+                }}
+              />
+            )}
+          </>
+        );
             <FormInput
               label="Contact Number *"
               value={values.phone}
