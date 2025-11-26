@@ -84,6 +84,7 @@ const BookingListScreen = ({ navigation }: any) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [bookingEmails, setBookingEmails] = useState<{ [key: string]: any[] }>({});
   const [emailsLoading, setEmailsLoading] = useState<{ [key: string]: boolean }>({});
+  const [bookingStatuses, setBookingStatuses] = useState<{ [key: string]: string }>({});
   const fetchBookingEmails = async (bookingId: string) => {
     if (!token) return;
     setEmailsLoading(prev => ({ ...prev, [bookingId]: true }));
@@ -91,6 +92,13 @@ const BookingListScreen = ({ navigation }: any) => {
       const emails = await getBookingEmails(bookingId, token);
       const uniqueEmails = deduplicateEmails(emails);
       setBookingEmails(prev => ({ ...prev, [bookingId]: uniqueEmails }));
+      
+      // Update status based on email replies
+      const hasEmailReply = uniqueEmails.some(email => email.emailType === 'reply');
+      const booking = bookings.find(b => b._id === bookingId);
+      if (hasEmailReply && booking?.status === 'Pending') {
+        setBookingStatuses(prev => ({ ...prev, [bookingId]: 'Completed' }));
+      }
     } catch (err) {
       setBookingEmails(prev => ({ ...prev, [bookingId]: [] }));
     } finally {
@@ -106,6 +114,13 @@ const BookingListScreen = ({ navigation }: any) => {
 
       if (response.data.success) {
         setBookings(response.data.data);
+        
+        // Check email status for all bookings to update their status
+        response.data.data.forEach((booking: Booking) => {
+          if (booking.status === 'Pending') {
+            fetchBookingEmails(booking._id);
+          }
+        });
       }
     } catch (error: any) {
       console.error("Error fetching bookings:", error);
@@ -153,8 +168,8 @@ const BookingListScreen = ({ navigation }: any) => {
 
     const handleEmailReplyReceived = (data: any) => {
       console.log("⚡ Email reply received:", data);
-      // Refresh emails for the matched booking if it's currently expanded
-      if (data.bookingId && expandedId === data.bookingId) {
+      // Refresh emails for the matched booking
+      if (data.bookingId) {
         fetchBookingEmails(data.bookingId);
       }
       // Also show a notification if the booking is in the list
@@ -240,8 +255,7 @@ const BookingListScreen = ({ navigation }: any) => {
 
   const renderBookingCard = ({ item }: { item: Booking }) => {
     const isExpanded = expandedId === item._id;
-    const hasEmailReply = bookingEmails[item._id]?.some(email => email.emailType === 'reply') || false;
-    const displayStatus = hasEmailReply && item.status === 'Pending' ? 'Completed' : item.status;
+    const displayStatus = bookingStatuses[item._id] || item.status;
 
     return (
       <TouchableOpacity
