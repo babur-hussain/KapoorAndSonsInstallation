@@ -11,6 +11,7 @@ const updateSchema = new mongoose.Schema(
 
 const bookingSchema = new mongoose.Schema(
   {
+    bookingId: { type: String, unique: true, index: true },
     customerName: { type: String, required: true },
     email: { type: String },
     contactNumber: { type: String, required: true },
@@ -55,10 +56,44 @@ const bookingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Generate unique 6-character booking ID
+function generateBookingId() {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+}
+
+// Pre-save hook to generate bookingId
+bookingSchema.pre('save', async function(next) {
+  if (!this.bookingId) {
+    let unique = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (!unique && attempts < maxAttempts) {
+      this.bookingId = generateBookingId();
+      const existing = await mongoose.model('Booking').findOne({ bookingId: this.bookingId });
+      if (!existing) {
+        unique = true;
+      }
+      attempts++;
+    }
+    
+    if (!unique) {
+      throw new Error('Unable to generate unique booking ID');
+    }
+  }
+  next();
+});
+
 // Index for faster queries
 bookingSchema.index({ createdBy: 1, createdAt: -1 });
 bookingSchema.index({ assignedTo: 1, status: 1 });
 bookingSchema.index({ status: 1 });
+bookingSchema.index({ bookingId: 1 });
 
 export const Booking = mongoose.model("Booking", bookingSchema);
 

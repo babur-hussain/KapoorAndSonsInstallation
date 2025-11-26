@@ -153,7 +153,7 @@ ${booking.preferredDateTime ? `- Preferred Date: ${new Date(booking.preferredDat
 
 Status: ${booking.status}
 
-Booking ID: ${booking._id}
+Booking ID: ${booking.bookingId || booking._id}
 Created: ${booking.createdAt}
 
 Please contact the customer to schedule the demo.

@@ -19,6 +19,7 @@ import axios from "axios";
 
 interface Booking {
   _id: string;
+  bookingId?: string;
   customerName: string;
   contactNumber: string;
   alternateContactNumber?: string;
@@ -235,6 +236,12 @@ const BookingListScreen = ({ navigation }: any) => {
             {/* Booking Details */}
             <View style={styles.detailSection}>
               <Text style={styles.sectionTitle}>Booking Details</Text>
+              {item.bookingId && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Booking ID:</Text>
+                  <Text style={[styles.detailValue, styles.bookingIdText]}>{item.bookingId}</Text>
+                </View>
+              )}
               {/* ...existing code... */}
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Category:</Text>
@@ -554,6 +561,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#333",
     flex: 1,
+  },
+  bookingIdText: {
+    fontWeight: "bold",
+    color: "#2196F3",
+    fontSize: 15,
   },
   updateItem: {
     backgroundColor: "#f9f9f9",

@@ -117,7 +117,7 @@ Thank you for choosing Kapoor & Sons!
 
 ---
 Kapoor & Sons Demo Booking System
-Booking ID: ${booking._id}
+Booking ID: ${booking.bookingId || booking._id}
 Created: ${new Date(booking.createdAt).toLocaleString()}`;
 
   const html = `
@@ -176,7 +176,7 @@ Created: ${new Date(booking.createdAt).toLocaleString()}`;
     </div>
     <div class="footer">
       <p>Kapoor & Sons Demo Booking System</p>
-      <p>Booking ID: ${booking._id}</p>
+      <p>Booking ID: ${booking.bookingId || booking._id}</p>
       <p>Created: ${new Date(booking.createdAt).toLocaleString()}</p>
     </div>
   </div>
@@ -214,7 +214,7 @@ Please contact the customer to schedule the demo.
 
 ---
 Kapoor & Sons Demo Booking System
-Booking ID: ${booking._id}
+Booking ID: ${booking.bookingId || booking._id}
 Created: ${new Date(booking.createdAt).toLocaleString()}`;
 
   const html = `
@@ -281,7 +281,7 @@ Created: ${new Date(booking.createdAt).toLocaleString()}`;
     </div>
     <div class="footer">
       <p>Kapoor & Sons Demo Booking System</p>
-      <p>Booking ID: ${booking._id}</p>
+      <p>Booking ID: ${booking.bookingId || booking._id}</p>
       <p>Created: ${new Date(booking.createdAt).toLocaleString()}</p>
     </div>
   </div>

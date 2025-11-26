@@ -21,7 +21,7 @@ export async function triggerDemoBookingEmail(booking) {
     console.log("\n" + "=".repeat(60));
     console.log("📧 TRIGGERING N8N EMAIL WORKFLOW");
     console.log("=".repeat(60));
-    console.log("Booking ID:   ", booking._id);
+    console.log("Booking ID:   ", booking.bookingId || booking._id);
     console.log("Customer:     ", booking.customerName);
     console.log("Brand:        ", booking.brand);
     console.log("Model:        ", booking.model);
