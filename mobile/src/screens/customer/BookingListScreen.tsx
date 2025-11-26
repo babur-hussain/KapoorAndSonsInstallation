@@ -163,8 +163,12 @@ const BookingListScreen = ({ navigation }: any) => {
   }, []);
 
   const toggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
-    if (expandedId !== id) fetchBookingEmails(id);
+    const wasExpanded = expandedId === id;
+    setExpandedId(wasExpanded ? null : id);
+    // Only fetch emails if expanding (not collapsing) and haven't fetched before
+    if (!wasExpanded && !bookingEmails[id]) {
+      fetchBookingEmails(id);
+    }
   };
 
   const getStatusColor = (status: string) => {
