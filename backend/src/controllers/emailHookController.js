@@ -227,6 +227,7 @@ export const receiveEmailHook = async (req, res) => {
         id: emailLog._id,
         from: emailLog.from,
         subject: emailLog.subject,
+        replyText: emailLog.replyText,
         bookingId: matchedBookingId,
         emailType: emailType,
         timestamp: emailLog.timestamp,
