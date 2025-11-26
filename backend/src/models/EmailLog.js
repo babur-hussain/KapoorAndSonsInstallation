@@ -43,6 +43,20 @@ const emailLogSchema = new mongoose.Schema(
       default: Date.now,
       index: true,
     },
+    messageId: {
+      type: String,
+      trim: true,
+      index: true, // For fast lookup of original emails
+    },
+    inReplyTo: {
+      type: String,
+      trim: true,
+      index: true, // For fast email thread matching
+    },
+    references: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true, // Adds createdAt and updatedAt

@@ -14,7 +14,18 @@ import mongoose from "mongoose";
  */
 export const receiveEmailHook = async (req, res) => {
   try {
-    const { from, to, subject, replyText, replySent, timestamp, bookingId } = req.body;
+    const { 
+      from, 
+      to, 
+      subject, 
+      replyText, 
+      replySent, 
+      timestamp, 
+      bookingId,
+      messageId,      // Email Message-ID header
+      inReplyTo,      // In-Reply-To header for threading
+      references      // References header for email threading
+    } = req.body;
 
     // Log incoming webhook data in a clean formatted way
     console.log("\n" + "=".repeat(60));
@@ -26,6 +37,8 @@ export const receiveEmailHook = async (req, res) => {
     console.log("Reply Text:  ", replyText ? replyText.substring(0, 100) + "..." : "N/A");
     console.log("Reply Sent:  ", replySent !== undefined ? replySent : "N/A");
     console.log("Booking ID:  ", bookingId || "N/A");
+    console.log("Message-ID:  ", messageId || "N/A");
+    console.log("In-Reply-To: ", inReplyTo || "N/A");
     console.log("Timestamp:   ", timestamp || new Date().toISOString());
     console.log("=".repeat(60) + "\n");
 
@@ -51,14 +64,64 @@ export const receiveEmailHook = async (req, res) => {
     // Try to match email with a booking
     let matchedBookingId = bookingId;
 
+    // Method 1: Try to find by In-Reply-To header (most reliable for email threading)
+    if (!matchedBookingId && inReplyTo) {
+      console.log("🔍 Searching by In-Reply-To header:", inReplyTo);
+      
+      // Try to find the original email by Message-ID
+      const originalEmail = await EmailLog.findOne({ 
+        messageId: inReplyTo,
+        bookingId: { $exists: true, $ne: null }
+      });
+      
+      if (originalEmail && originalEmail.bookingId) {
+        matchedBookingId = originalEmail.bookingId.toString();
+        console.log("✅ Matched booking via email thread (In-Reply-To):", matchedBookingId);
+      }
+    }
+
+    // Method 2: Try to extract booking ID from subject line
     if (!matchedBookingId) {
-      // Try to extract booking ID from subject line
-      // Pattern: "Re: Demo Booking #<bookingId>" or "Booking ID: <bookingId>"
-      const bookingIdMatch = subject.match(/(?:booking|#)\s*[:#]?\s*([a-f0-9]{24})/i);
+      // Supports multiple patterns:
+      // - "Booking #67890abcdef12345"
+      // - "Re: New Request - #67890abcdef12345"
+      // - "Booking ID: 67890abcdef12345"
+      // - "#67890abcdef12345"
+      const bookingIdMatch = subject.match(/#([a-f0-9]{24})|booking[:\s]+([a-f0-9]{24})/i);
 
       if (bookingIdMatch) {
-        matchedBookingId = bookingIdMatch[1];
+        matchedBookingId = bookingIdMatch[1] || bookingIdMatch[2];
         console.log("📌 Extracted booking ID from subject:", matchedBookingId);
+      }
+    }
+
+    // Method 3: Try to extract from email body (replyText)
+    if (!matchedBookingId && replyText) {
+      const bodyIdMatch = replyText.match(/#([a-f0-9]{24})|booking[:\s]+([a-f0-9]{24})/i);
+      if (bodyIdMatch) {
+        matchedBookingId = bodyIdMatch[1] || bodyIdMatch[2];
+        console.log("📌 Extracted booking ID from email body:", matchedBookingId);
+      }
+    }
+
+    // Method 4: Match by sender email with recent bookings (last resort)
+    if (!matchedBookingId) {
+      console.log("⚠️  No booking ID found, attempting to match by sender email...");
+      
+      // Find most recent booking from this email sender (last 30 days)
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const recentBooking = await Booking.findOne({
+        email: from.trim(),
+        createdAt: { $gte: thirtyDaysAgo }
+      }).sort({ createdAt: -1 });
+
+      if (recentBooking) {
+        matchedBookingId = recentBooking._id.toString();
+        console.log("📧 Matched by email to recent booking:", matchedBookingId);
+        console.log("   Customer:", recentBooking.customerName);
+        console.log("   Created:", recentBooking.createdAt.toISOString());
+      } else {
+        console.log("⚠️  No recent bookings found for email:", from);
       }
     }
 
@@ -96,6 +159,9 @@ export const receiveEmailHook = async (req, res) => {
       replySent: replySent === true,
       emailType: emailType,
       timestamp: timestamp ? new Date(timestamp) : new Date(),
+      messageId: messageId ? messageId.trim() : undefined,
+      inReplyTo: inReplyTo ? inReplyTo.trim() : undefined,
+      references: references ? references.trim() : undefined,
     });
 
     await emailLog.save();
