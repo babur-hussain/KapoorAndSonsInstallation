@@ -52,6 +52,30 @@ interface Booking {
   updatedAt: string;
 }
 
+const buildEmailKey = (email: any) => {
+  const timestampValue = email?.timestamp ? new Date(email.timestamp).getTime() : 0;
+  const safeTimestamp = Number.isNaN(timestampValue) ? 0 : timestampValue;
+  const normalizedReply = (email?.replyText || "").trim();
+  const normalizedSubject = (email?.subject || "").trim();
+  return (
+    email?.messageId ||
+    email?._id ||
+    `${normalizedSubject}-${safeTimestamp}-${normalizedReply}`
+  );
+};
+
+const deduplicateEmails = (emails: any[] = []) => {
+  const seenKeys = new Set<string>();
+  return emails.filter((email) => {
+    const key = buildEmailKey(email);
+    if (seenKeys.has(key)) {
+      return false;
+    }
+    seenKeys.add(key);
+    return true;
+  });
+};
+
 const BookingListScreen = ({ navigation }: any) => {
   const { token } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -64,10 +88,7 @@ const BookingListScreen = ({ navigation }: any) => {
     setEmailsLoading(prev => ({ ...prev, [bookingId]: true }));
     try {
       const emails = await getBookingEmails(bookingId, token);
-      const uniqueEmails = emails.filter((email: any, index: number, self: any[]) => {
-        const key = email._id || `${email.subject}-${email.timestamp}`;
-        return index === self.findIndex(e => (e._id || `${e.subject}-${e.timestamp}`) === key);
-      });
+      const uniqueEmails = deduplicateEmails(emails);
       setBookingEmails(prev => ({ ...prev, [bookingId]: uniqueEmails }));
     } catch (err) {
       setBookingEmails(prev => ({ ...prev, [bookingId]: [] }));
@@ -331,7 +352,7 @@ const BookingListScreen = ({ navigation }: any) => {
                 <ActivityIndicator size="small" color="#2196F3" />
               ) : bookingEmails[item._id]?.length > 0 ? (
                 bookingEmails[item._id].map((email, idx) => (
-                  <View key={email._id || idx} style={styles.emailCard}>
+                  <View key={buildEmailKey(email) || idx} style={styles.emailCard}>
                     {/* Subject */}
                     <Text style={styles.emailSubjectHeader}>{email.subject}</Text>
                     <View style={styles.emailTopDivider} />
