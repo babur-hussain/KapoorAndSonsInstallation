@@ -57,7 +57,7 @@ export default function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
       />
       {/* KS Logo */}
       <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }] }}>
-        <Image source={require('../../assets/icon.png')} style={styles.logo} resizeMode="contain" />
+        <Image source={require('../../assets/splash-logo.png')} style={styles.logo} resizeMode="contain" />
       </Animated.View>
     </View>
   );
@@ -78,25 +78,25 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   logo: {
-    width: width * 0.45,
-    height: width * 0.45,
-    marginBottom: 10,
+    width: width * 0.6,
+    height: width * 0.6,
+    zIndex: 10,
   },
   circle: {
     position: 'absolute',
-    width: width * 0.7,
-    height: width * 0.7,
-    borderRadius: width * 0.35,
-    backgroundColor: '#2196F3',
-    top: height / 2 - width * 0.35,
-    left: width / 2 - width * 0.35,
+    width: width * 0.8,
+    height: width * 0.8,
+    borderRadius: width * 0.4,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    top: height / 2 - width * 0.4,
+    left: width / 2 - width * 0.4,
   },
   circle2: {
-    backgroundColor: '#4FC3F7',
-    width: width * 0.5,
-    height: width * 0.5,
-    borderRadius: width * 0.25,
-    top: height / 2 - width * 0.25,
-    left: width / 2 - width * 0.25,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    width: width * 0.6,
+    height: width * 0.6,
+    borderRadius: width * 0.3,
+    top: height / 2 - width * 0.3,
+    left: width / 2 - width * 0.3,
   },
 });

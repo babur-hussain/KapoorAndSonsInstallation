@@ -286,61 +286,40 @@ export default function BookingFormScreen({ navigation }: Props) {
   };
 
   return (
-    <Formik
-      initialValues={initialValues}
-      validationSchema={validationSchema}
-      onSubmit={handleSubmit}
-    >
-      {({
-        return (
-          <>
-            <Formik
-              initialValues={initialValues}
-              validationSchema={validationSchema}
-              onSubmit={handleSubmit}
-            >
-              {({
-                values,
-                errors,
-                touched,
-                handleChange,
-                handleBlur,
-                handleSubmit,
-                setFieldValue,
-                isSubmitting,
-              }) => (
-                <ScrollView
-                  style={styles.container}
-                  keyboardShouldPersistTaps="handled"
-                >
-                  <View style={styles.content}>
-                    <Text style={styles.title}>Book a Demo</Text>
-                    <Text style={styles.subtitle}>Fill in your details below</Text>
-                    <FormInput
-                      label="Customer Name *"
-                      value={values.name}
-                      onChangeText={handleChange('name')}
-                      onBlur={() => handleBlur('name')}
-                      placeholder="Enter your name"
-                      error={errors.name}
-                      touched={touched.name}
-                    />
-                    {/* ...existing code... */}
-                  </View>
-                </ScrollView>
-              )}
-            </Formik>
-            {showSuccess && (
-              <SuccessAnimation
-                message="Booking submitted successfully!"
-                onComplete={() => {
-                  setShowSuccess(false);
-                  navigation.goBack();
-                }}
+    <>
+      <Formik
+        initialValues={initialValues}
+        validationSchema={validationSchema}
+        onSubmit={handleSubmit}
+      >
+        {({
+          values,
+          errors,
+          touched,
+          handleChange,
+          handleBlur,
+          handleSubmit,
+          setFieldValue,
+          isSubmitting,
+        }) => (
+          <ScrollView
+            style={styles.container}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.content}>
+              <Text style={styles.title}>Book a Demo</Text>
+              <Text style={styles.subtitle}>Fill in your details below</Text>
+
+              <FormInput
+                label="Customer Name *"
+                value={values.name}
+                onChangeText={handleChange('name')}
+                onBlur={() => handleBlur('name')}
+                placeholder="Enter your name"
+                error={errors.name}
+                touched={touched.name}
               />
-            )}
-          </>
-        );
+
             <FormInput
               label="Contact Number *"
               value={values.phone}
@@ -543,16 +522,24 @@ export default function BookingFormScreen({ navigation }: Props) {
               onPress={() => navigation.goBack()}
               disabled={isSubmitting}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      )}
-    </Formik>
-  );
-}
-
-const styles = StyleSheet.create({
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    )}
+  </Formik>
+  {showSuccess && (
+    <SuccessAnimation
+      message="Booking submitted successfully!"
+      onComplete={() => {
+        setShowSuccess(false);
+        navigation.goBack();
+      }}
+    />
+  )}
+</>
+);
+}const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',

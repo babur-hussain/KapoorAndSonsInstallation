@@ -464,11 +464,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 4,
   },
-    backgroundColor: "#2196F3",
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
   createButtonText: {
     color: "#fff",
     fontSize: 16,
@@ -580,4 +575,3 @@ const styles = StyleSheet.create({
 });
 
 export default BookingListScreen;
-
