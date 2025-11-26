@@ -368,35 +368,26 @@ const BookingListScreen = ({ navigation }: any) => {
               ) : bookingEmails[item._id]?.length > 0 ? (
                 bookingEmails[item._id].map((email, idx) => (
                   <View key={buildEmailKey(email) || idx} style={styles.emailCard}>
-                    {/* Subject */}
-                    <Text style={styles.emailSubjectHeader}>{email.subject}</Text>
-                    <View style={styles.emailTopDivider} />
-                    
                     {/* Reply Text */}
                     <Text style={styles.emailReplyText}>{email.replyText}</Text>
+                    
+                    {/* Divider */}
                     <View style={styles.emailMiddleDivider} />
                     
-                    {/* Metadata */}
+                    {/* Metadata - all in small light gray */}
                     <View style={styles.emailMetadata}>
-                      <View style={styles.emailMetaRow}>
-                        <Text style={styles.emailMetaLabel}>From:</Text>
-                        <Text style={styles.emailMetaValue}>{email.from}</Text>
-                      </View>
-                      <View style={styles.emailMetaRow}>
-                        <Text style={styles.emailMetaLabel}>Type:</Text>
-                        <Text style={[styles.emailMetaValue, styles.emailTypeValue]}>
-                          {email.emailType === 'reply' ? '📬 Reply' : email.emailType === 'outgoing' ? '📤 Sent' : '📥 Received'}
-                        </Text>
-                      </View>
-                      <View style={styles.emailMetaRow}>
-                        <Text style={styles.emailMetaLabel}>Time:</Text>
-                        <Text style={styles.emailMetaValue}>{formatDate(email.timestamp)}</Text>
-                      </View>
+                      <Text style={styles.emailMetaText}>Subject: {email.subject}</Text>
+                      <Text style={styles.emailMetaText}>From: {email.from}</Text>
+                      <Text style={styles.emailMetaText}>Type: {email.emailType === 'reply' ? '📬 Reply' : email.emailType === 'outgoing' ? '📤 Sent' : '📥 Received'}</Text>
+                      <Text style={styles.emailMetaText}>Time: {formatDate(email.timestamp)}</Text>
                       {email._id && (
-                        <View style={styles.emailMetaRow}>
-                          <Text style={styles.emailMetaLabel}>ID:</Text>
-                          <Text style={styles.emailMetaValueSmall}>{email._id.substring(0, 8)}...</Text>
-                        </View>
+                        <Text style={styles.emailMetaText}>ID: {email._id}</Text>
+                      )}
+                      {email.to && (
+                        <Text style={styles.emailMetaText}>To: {email.to}</Text>
+                      )}
+                      {email.messageId && (
+                        <Text style={styles.emailMetaText}>Message ID: {email.messageId}</Text>
                       )}
                     </View>
                   </View>
@@ -535,20 +526,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  emailSubjectHeader: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 8,
-    fontStyle: 'italic',
-  },
-  emailTopDivider: {
-    height: 1,
-    backgroundColor: '#ddd',
-    marginBottom: 12,
-  },
   emailReplyText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#222',
     lineHeight: 24,
     marginBottom: 12,
@@ -556,35 +536,15 @@ const styles = StyleSheet.create({
   emailMiddleDivider: {
     height: 1,
     backgroundColor: '#ddd',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   emailMetadata: {
-    gap: 6,
+    gap: 4,
   },
-  emailMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  emailMetaLabel: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '600',
-    width: 60,
-  },
-  emailMetaValue: {
-    fontSize: 12,
-    color: '#333',
-    flex: 1,
-  },
-  emailMetaValueSmall: {
+  emailMetaText: {
     fontSize: 10,
-    color: '#999',
-    flex: 1,
-    fontFamily: 'monospace',
-  },
-  emailTypeValue: {
-    fontWeight: 'bold',
-    color: '#2196F3',
+    color: '#aaa',
+    lineHeight: 16,
   },
   emailEmpty: {
     fontSize: 13,
