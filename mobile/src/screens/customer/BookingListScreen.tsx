@@ -64,7 +64,11 @@ const BookingListScreen = ({ navigation }: any) => {
     setEmailsLoading(prev => ({ ...prev, [bookingId]: true }));
     try {
       const emails = await getBookingEmails(bookingId, token);
-      setBookingEmails(prev => ({ ...prev, [bookingId]: emails }));
+      const uniqueEmails = emails.filter((email: any, index: number, self: any[]) => {
+        const key = email._id || `${email.subject}-${email.timestamp}`;
+        return index === self.findIndex(e => (e._id || `${e.subject}-${e.timestamp}`) === key);
+      });
+      setBookingEmails(prev => ({ ...prev, [bookingId]: uniqueEmails }));
     } catch (err) {
       setBookingEmails(prev => ({ ...prev, [bookingId]: [] }));
     } finally {
