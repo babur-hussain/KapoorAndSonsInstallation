@@ -4,6 +4,7 @@ import axios from "axios";
 import socketService from "../services/socketService";
 import { API_BASE_URL } from "../config/api";
 import { auth } from "../config/firebase";
+import { registerForPushNotificationsAsync, savePushTokenToServer } from "../services/notificationService";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -153,6 +154,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.log("Socket connection failed, continuing without real-time updates");
           }
         }, 100);
+
+        // Register for push notifications after successful auth
+        setTimeout(async () => {
+          try {
+            const pushToken = await registerForPushNotificationsAsync();
+            if (pushToken) {
+              await savePushTokenToServer(pushToken);
+            }
+          } catch (error) {
+            console.log("Push notification registration failed, continuing without notifications");
+          }
+        }, 500);
 
         console.log(`✅ Firebase authentication successful: ${userData.email}`);
         setIsLoading(false);

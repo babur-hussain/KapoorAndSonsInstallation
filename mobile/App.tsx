@@ -3,19 +3,12 @@ import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import React, { useState, useEffect } from 'react';
 import AnimatedSplash from './src/components/AnimatedSplash';
-import { registerForPushNotificationsAsync, savePushTokenToServer, setupNotificationListeners } from './src/services/notificationService';
+import { setupNotificationListeners } from './src/services/notificationService';
 
 export default function App() {
   const [splashVisible, setSplashVisible] = useState(true);
 
   useEffect(() => {
-    // Register for push notifications
-    registerForPushNotificationsAsync().then(token => {
-      if (token) {
-        savePushTokenToServer(token);
-      }
-    });
-
     // Setup notification listeners
     const cleanup = setupNotificationListeners(
       (notification) => {
