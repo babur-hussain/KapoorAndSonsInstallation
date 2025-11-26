@@ -85,6 +85,7 @@ const BookingListScreen = ({ navigation }: any) => {
   const [bookingEmails, setBookingEmails] = useState<{ [key: string]: any[] }>({});
   const [emailsLoading, setEmailsLoading] = useState<{ [key: string]: boolean }>({});
   const fetchBookingEmails = async (bookingId: string) => {
+    if (!token) return;
     setEmailsLoading(prev => ({ ...prev, [bookingId]: true }));
     try {
       const emails = await getBookingEmails(bookingId, token);
