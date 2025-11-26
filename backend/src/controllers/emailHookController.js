@@ -1,6 +1,8 @@
 import EmailLog from "../models/EmailLog.js";
 import { Booking } from "../models/Booking.js";
+import { User } from "../models/User.js";
 import mongoose from "mongoose";
+import { sendPushNotification } from "../services/pushNotificationService.js";
 
 /**
  * Email Hook Controller
@@ -213,6 +215,30 @@ export const receiveEmailHook = async (req, res) => {
             timestamp: emailLog.timestamp,
           });
           console.log("⚡ Socket.IO event emitted: emailReplyReceived");
+        }
+
+        // Send push notification to the customer
+        if (booking && booking.createdBy) {
+          const customer = await User.findById(booking.createdBy);
+          if (customer && customer.pushToken) {
+            try {
+              await sendPushNotification(
+                customer.pushToken,
+                'New Response Received',
+                `${booking.brand} ${booking.model} - Response from ${emailLog.from}`,
+                {
+                  bookingId: matchedBookingId,
+                  emailLogId: emailLog._id.toString(),
+                  type: 'email_reply',
+                }
+              );
+              console.log(`📱 Push notification sent to ${customer.name}`);
+            } catch (pushError) {
+              console.error("⚠️  Push notification failed:", pushError.message);
+            }
+          } else {
+            console.log("⚠️  No push token found for customer");
+          }
         }
       } catch (socketError) {
         console.error("⚠️  Socket.IO emit failed:", socketError.message);

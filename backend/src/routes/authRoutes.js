@@ -259,5 +259,50 @@ router.post("/change-password", firebaseAuth, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/v1/auth/push-token
+ * Save user push notification token
+ */
+router.post("/push-token", firebaseAuth, async (req, res) => {
+  try {
+    const { pushToken } = req.body;
+
+    if (!pushToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Push token is required",
+      });
+    }
+
+    // Update user with push token
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { pushToken },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    console.log(`✅ Push token saved for user: ${user.email}`);
+
+    res.json({
+      success: true,
+      message: "Push token saved successfully",
+    });
+  } catch (error) {
+    console.error("❌ Save push token error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to save push token",
+      error: error.message,
+    });
+  }
+});
+
 export default router;
 

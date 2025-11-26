@@ -48,6 +48,11 @@ const userSchema = new mongoose.Schema(
       sparse: true, // Allow null values, only enforce uniqueness when present
       index: true,
     },
+    // Push notification token
+    pushToken: {
+      type: String,
+      sparse: true,
+    },
   },
   { timestamps: true }
 );
