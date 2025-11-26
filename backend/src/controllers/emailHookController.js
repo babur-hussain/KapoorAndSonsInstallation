@@ -140,6 +140,8 @@ export const receiveEmailHook = async (req, res) => {
         console.log("   Customer:", booking.customerName);
         console.log("   Brand:", booking.brand);
         console.log("   Model:", booking.model);
+        // Always use MongoDB _id for storage and socket events
+        matchedBookingId = booking._id.toString();
       } else {
         console.log("⚠️  Booking ID provided but not found in database");
         matchedBookingId = null;

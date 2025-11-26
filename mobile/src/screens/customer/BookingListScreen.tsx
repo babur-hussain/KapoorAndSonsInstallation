@@ -125,16 +125,35 @@ const BookingListScreen = ({ navigation }: any) => {
       );
     };
 
+    const handleEmailReplyReceived = (data: any) => {
+      console.log("⚡ Email reply received:", data);
+      // Refresh emails for the matched booking if it's currently expanded
+      if (data.bookingId && expandedId === data.bookingId) {
+        fetchBookingEmails(data.bookingId);
+      }
+      // Also show a notification if the booking is in the list
+      const matchedBooking = bookings.find(b => b._id === data.bookingId);
+      if (matchedBooking) {
+        Alert.alert(
+          "New Response Received",
+          `${matchedBooking.brand} ${matchedBooking.model} - ${data.from}`,
+          [{ text: "OK" }]
+        );
+      }
+    };
+
     // Add listeners
     socketService.on("bookingCreated", handleBookingCreated);
     socketService.on("bookingUpdated", handleBookingUpdated);
     socketService.on("bookingStatusChanged", handleBookingStatusChanged);
+    socketService.on("emailReplyReceived", handleEmailReplyReceived);
 
     // Cleanup listeners on unmount
     return () => {
       socketService.off("bookingCreated", handleBookingCreated);
       socketService.off("bookingUpdated", handleBookingUpdated);
       socketService.off("bookingStatusChanged", handleBookingStatusChanged);
+      socketService.off("emailReplyReceived", handleEmailReplyReceived);
     };
   }, []);
 
