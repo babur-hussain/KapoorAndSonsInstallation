@@ -210,6 +210,8 @@ const BookingListScreen = ({ navigation }: any) => {
 
   const renderBookingCard = ({ item }: { item: Booking }) => {
     const isExpanded = expandedId === item._id;
+    const hasEmailReply = bookingEmails[item._id]?.some(email => email.emailType === 'reply') || false;
+    const displayStatus = hasEmailReply && item.status === 'Pending' ? 'Completed' : item.status;
 
     return (
       <TouchableOpacity
@@ -228,11 +230,11 @@ const BookingListScreen = ({ navigation }: any) => {
           <View
             style={[
               styles.statusBadge,
-              { backgroundColor: getStatusColor(item.status) },
+              { backgroundColor: getStatusColor(displayStatus) },
             ]}
           >
             <Text style={styles.statusText}>
-              {getStatusIcon(item.status)} {item.status}
+              {getStatusIcon(displayStatus)} {displayStatus}
             </Text>
           </View>
         </View>
@@ -321,14 +323,38 @@ const BookingListScreen = ({ navigation }: any) => {
                 <ActivityIndicator size="small" color="#2196F3" />
               ) : bookingEmails[item._id]?.length > 0 ? (
                 bookingEmails[item._id].map((email, idx) => (
-                  <View key={email._id || idx} style={styles.emailItem}>
-                    <Text style={styles.emailMeta}>
-                      <Text style={{ fontWeight: 'bold' }}>{email.emailType === 'reply' ? 'Reply' : email.emailType === 'outgoing' ? 'Sent' : 'Received'}:</Text>
-                      {' '}From: {email.from} | {new Date(email.timestamp).toLocaleString()}
-                    </Text>
-                    <Text style={styles.emailSubject}>{email.subject}</Text>
-                    <Text style={styles.emailBody}>{email.replyText}</Text>
-                    <View style={styles.emailDivider} />
+                  <View key={email._id || idx} style={styles.emailCard}>
+                    {/* Subject */}
+                    <Text style={styles.emailSubjectHeader}>{email.subject}</Text>
+                    <View style={styles.emailTopDivider} />
+                    
+                    {/* Reply Text */}
+                    <Text style={styles.emailReplyText}>{email.replyText}</Text>
+                    <View style={styles.emailMiddleDivider} />
+                    
+                    {/* Metadata */}
+                    <View style={styles.emailMetadata}>
+                      <View style={styles.emailMetaRow}>
+                        <Text style={styles.emailMetaLabel}>From:</Text>
+                        <Text style={styles.emailMetaValue}>{email.from}</Text>
+                      </View>
+                      <View style={styles.emailMetaRow}>
+                        <Text style={styles.emailMetaLabel}>Type:</Text>
+                        <Text style={[styles.emailMetaValue, styles.emailTypeValue]}>
+                          {email.emailType === 'reply' ? '📬 Reply' : email.emailType === 'outgoing' ? '📤 Sent' : '📥 Received'}
+                        </Text>
+                      </View>
+                      <View style={styles.emailMetaRow}>
+                        <Text style={styles.emailMetaLabel}>Time:</Text>
+                        <Text style={styles.emailMetaValue}>{formatDate(email.timestamp)}</Text>
+                      </View>
+                      {email._id && (
+                        <View style={styles.emailMetaRow}>
+                          <Text style={styles.emailMetaLabel}>ID:</Text>
+                          <Text style={styles.emailMetaValueSmall}>{email._id.substring(0, 8)}...</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
                 ))
               ) : (
@@ -452,37 +478,69 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
   },
-  emailItem: {
-    marginBottom: 12,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 10,
+  emailCard: {
+    marginBottom: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
-  emailMeta: {
-    fontSize: 13,
-    color: '#555',
-    marginBottom: 2,
+  emailSubjectHeader: {
+    fontSize: 12,
+    color: '#999',
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
-  emailSubject: {
-    fontWeight: 'bold',
-    fontSize: 14,
-    marginBottom: 2,
-    color: '#222',
-  },
-  emailBody: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 4,
-  },
-  emailDivider: {
+  emailTopDivider: {
     height: 1,
-    backgroundColor: '#eee',
-    marginVertical: 4,
+    backgroundColor: '#ddd',
+    marginBottom: 12,
+  },
+  emailReplyText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#222',
+    lineHeight: 24,
+    marginBottom: 12,
+  },
+  emailMiddleDivider: {
+    height: 1,
+    backgroundColor: '#ddd',
+    marginBottom: 12,
+  },
+  emailMetadata: {
+    gap: 6,
+  },
+  emailMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  emailMetaLabel: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '600',
+    width: 60,
+  },
+  emailMetaValue: {
+    fontSize: 12,
+    color: '#333',
+    flex: 1,
+  },
+  emailMetaValueSmall: {
+    fontSize: 10,
+    color: '#999',
+    flex: 1,
+    fontFamily: 'monospace',
+  },
+  emailTypeValue: {
+    fontWeight: 'bold',
+    color: '#2196F3',
   },
   emailEmpty: {
     fontSize: 13,
