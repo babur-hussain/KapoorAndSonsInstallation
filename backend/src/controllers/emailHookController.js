@@ -83,23 +83,23 @@ export const receiveEmailHook = async (req, res) => {
     // Method 2: Try to extract booking ID from subject line
     if (!matchedBookingId) {
       // Supports multiple patterns:
-      // - "Booking #67890abcdef12345"
-      // - "Re: New Request - #67890abcdef12345"
-      // - "Booking ID: 67890abcdef12345"
-      // - "#67890abcdef12345"
-      const bookingIdMatch = subject.match(/#([a-f0-9]{24})|booking[:\s]+([a-f0-9]{24})/i);
+      // - "Booking #A3K9P2" (6 chars)
+      // - "Booking #67890abcdef12345" (24 chars MongoDB ID)
+      // - "Re: New Request - #A3K9P2"
+      // - "Booking ID: A3K9P2"
+      const bookingIdMatch = subject.match(/#([A-Z0-9]{6})|#([a-f0-9]{24})|booking[:\s]+([A-Z0-9]{6})|booking[:\s]+([a-f0-9]{24})/i);
 
       if (bookingIdMatch) {
-        matchedBookingId = bookingIdMatch[1] || bookingIdMatch[2];
+        matchedBookingId = bookingIdMatch[1] || bookingIdMatch[2] || bookingIdMatch[3] || bookingIdMatch[4];
         console.log("📌 Extracted booking ID from subject:", matchedBookingId);
       }
     }
 
     // Method 3: Try to extract from email body (replyText)
     if (!matchedBookingId && replyText) {
-      const bodyIdMatch = replyText.match(/#([a-f0-9]{24})|booking[:\s]+([a-f0-9]{24})/i);
+      const bodyIdMatch = replyText.match(/#([A-Z0-9]{6})|#([a-f0-9]{24})|booking[:\s]+([A-Z0-9]{6})|booking[:\s]+([a-f0-9]{24})/i);
       if (bodyIdMatch) {
-        matchedBookingId = bodyIdMatch[1] || bodyIdMatch[2];
+        matchedBookingId = bodyIdMatch[1] || bodyIdMatch[2] || bodyIdMatch[3] || bodyIdMatch[4];
         console.log("📌 Extracted booking ID from email body:", matchedBookingId);
       }
     }
@@ -127,8 +127,13 @@ export const receiveEmailHook = async (req, res) => {
 
     // Validate and verify booking exists
     let booking = null;
-    if (matchedBookingId && mongoose.Types.ObjectId.isValid(matchedBookingId)) {
-      booking = await Booking.findById(matchedBookingId);
+    if (matchedBookingId) {
+      // Try to find by 6-character bookingId first, then by MongoDB _id
+      if (matchedBookingId.length === 6) {
+        booking = await Booking.findOne({ bookingId: matchedBookingId });
+      } else if (mongoose.Types.ObjectId.isValid(matchedBookingId)) {
+        booking = await Booking.findById(matchedBookingId);
+      }
 
       if (booking) {
         console.log("✅ Matched with booking:", booking._id);

@@ -49,7 +49,7 @@ export async function triggerDemoBookingEmail(booking) {
 
     // Prepare payload for n8n
     const payload = {
-      bookingId: booking._id.toString(),
+      bookingId: booking.bookingId || booking._id.toString(),
       customerName: booking.customerName,
       customerEmail: booking.email || "N/A",
       customerPhone: booking.contactNumber,
@@ -178,6 +178,7 @@ export async function triggerBookingWebhook(booking, webhookUrl) {
     // Build bookingDetails payload using variables exactly as requested
     const bookingDetails = {
       _id: booking._id.toString(),
+      bookingId: booking.bookingId || booking._id.toString(),
       customerName: booking.customerName || '',
       email: booking.email || '',
       contactNumber: booking.contactNumber || '',
