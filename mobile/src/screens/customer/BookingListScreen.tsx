@@ -85,7 +85,7 @@ const BookingListScreen = ({ navigation }: any) => {
   const [bookingEmails, setBookingEmails] = useState<{ [key: string]: any[] }>({});
   const [emailsLoading, setEmailsLoading] = useState<{ [key: string]: boolean }>({});
   const [bookingStatuses, setBookingStatuses] = useState<{ [key: string]: string }>({});
-  const fetchBookingEmails = async (bookingId: string) => {
+  const fetchBookingEmails = async (bookingId: string, currentStatus?: string) => {
     if (!token) return;
     setEmailsLoading(prev => ({ ...prev, [bookingId]: true }));
     try {
@@ -95,8 +95,8 @@ const BookingListScreen = ({ navigation }: any) => {
       
       // Update status based on email replies
       const hasEmailReply = uniqueEmails.some(email => email.emailType === 'reply');
-      const booking = bookings.find(b => b._id === bookingId);
-      if (hasEmailReply && booking?.status === 'Pending') {
+      const bookingStatus = currentStatus || bookings.find(b => b._id === bookingId)?.status;
+      if (hasEmailReply && bookingStatus === 'Pending') {
         setBookingStatuses(prev => ({ ...prev, [bookingId]: 'Completed' }));
       }
     } catch (err) {
@@ -115,10 +115,10 @@ const BookingListScreen = ({ navigation }: any) => {
       if (response.data.success) {
         setBookings(response.data.data);
         
-        // Check email status for all bookings to update their status
+        // Check email status for all pending bookings to update their status
         response.data.data.forEach((booking: Booking) => {
           if (booking.status === 'Pending') {
-            fetchBookingEmails(booking._id);
+            fetchBookingEmails(booking._id, 'Pending');
           }
         });
       }
