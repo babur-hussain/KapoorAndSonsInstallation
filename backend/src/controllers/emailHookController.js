@@ -20,18 +20,24 @@ export const receiveEmailHook = async (req, res) => {
       data = req.body[0]; // Extract first item if it's an array
     }
     
-    const { 
-      from, 
-      to, 
-      subject, 
-      replyText, 
-      replySent, 
-      timestamp, 
-      bookingId,
-      messageId,      // Email Message-ID header
-      inReplyTo,      // In-Reply-To header for threading
-      references      // References header for email threading
-    } = data;
+    // Helper function to clean n8n empty values (converts "=" to null/undefined)
+    const cleanValue = (val) => {
+      if (val === null || val === undefined || val === "" || val === "=") {
+        return undefined;
+      }
+      return val;
+    };
+    
+    const from = cleanValue(data.from);
+    const to = cleanValue(data.to);
+    const subject = cleanValue(data.subject);
+    const replyText = cleanValue(data.replyText);
+    const replySent = data.replySent;
+    const timestamp = cleanValue(data.timestamp);
+    const bookingId = cleanValue(data.bookingId);
+    const messageId = cleanValue(data.messageId);
+    const inReplyTo = cleanValue(data.inReplyTo);
+    const references = cleanValue(data.references);
 
     // Log incoming webhook data in a clean formatted way
     console.log("\n" + "=".repeat(60));
@@ -162,6 +168,15 @@ export const receiveEmailHook = async (req, res) => {
       emailType = "reply";
     }
 
+    // Parse timestamp safely
+    let parsedTimestamp = new Date();
+    if (timestamp) {
+      const dateAttempt = new Date(timestamp);
+      if (!isNaN(dateAttempt.getTime())) {
+        parsedTimestamp = dateAttempt;
+      }
+    }
+
     // Save to database
     const emailLog = new EmailLog({
       from: from.trim(),
@@ -171,7 +186,7 @@ export const receiveEmailHook = async (req, res) => {
       bookingId: matchedBookingId || undefined,
       replySent: replySent === true,
       emailType: emailType,
-      timestamp: timestamp ? new Date(timestamp) : new Date(),
+      timestamp: parsedTimestamp,
       messageId: messageId ? messageId.trim() : undefined,
       inReplyTo: inReplyTo ? inReplyTo.trim() : undefined,
       references: references ? references.trim() : undefined,
