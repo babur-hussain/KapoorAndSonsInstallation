@@ -14,6 +14,12 @@ import mongoose from "mongoose";
  */
 export const receiveEmailHook = async (req, res) => {
   try {
+    // Handle both array and object format from n8n
+    let data = req.body;
+    if (Array.isArray(req.body) && req.body.length > 0) {
+      data = req.body[0]; // Extract first item if it's an array
+    }
+    
     const { 
       from, 
       to, 
@@ -25,7 +31,7 @@ export const receiveEmailHook = async (req, res) => {
       messageId,      // Email Message-ID header
       inReplyTo,      // In-Reply-To header for threading
       references      // References header for email threading
-    } = req.body;
+    } = data;
 
     // Log incoming webhook data in a clean formatted way
     console.log("\n" + "=".repeat(60));
