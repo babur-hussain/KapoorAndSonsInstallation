@@ -3,6 +3,7 @@ import { Brand } from "../models/Brand.js";
 import { Category } from "../models/Category.js";
 import { ActivityLog } from "../models/ActivityLog.js";
 import { User } from "../models/User.js";
+import EmailLog from "../models/EmailLog.js";
 import {
   sendBookingConfirmationToCustomer,
   sendNewBookingToBrand,
@@ -739,6 +740,58 @@ async function sendStatusUpdateNotification(booking, oldStatus) {
   }
 }
 
+/**
+ * Get email communications for a specific booking
+ * @route GET /api/v1/bookings/:id/emails
+ * @access Protected (requires authentication)
+ */
+export const getBookingEmails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate booking ID
+    if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID format",
+      });
+    }
+
+    // Check if booking exists
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    // Fetch all email communications related to this booking
+    const emails = await EmailLog.find({ bookingId: id })
+      .sort({ timestamp: -1 })
+      .select('from to subject replyText emailType replySent timestamp createdAt');
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        bookingId: id,
+        customerName: booking.customerName,
+        brand: booking.brand,
+        model: booking.model,
+        emails: emails,
+        totalEmails: emails.length,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error fetching booking emails:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Error fetching email communications",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
 export default {
   createBooking,
   getAllBookings,
@@ -746,5 +799,6 @@ export default {
   updateBookingStatus,
   getUserBookings,
   updateBookingStatusWithNotification,
+  getBookingEmails,
 };
 

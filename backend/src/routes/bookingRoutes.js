@@ -8,6 +8,7 @@ import {
   updateBookingStatus,
   getUserBookings,
   updateBookingStatusWithNotification,
+  getBookingEmails,
 } from "../controllers/bookingController.js";
 
 const router = express.Router();
@@ -26,6 +27,9 @@ router.get("/", firebaseAuth, authorize("admin", "staff"), getAllBookings);
 
 // Get booking by ID (protected - requires authentication)
 router.get("/:id", firebaseAuth, getBookingById);
+
+// Get email communications for a specific booking (protected - requires authentication)
+router.get("/:id/emails", firebaseAuth, getBookingEmails);
 
 // Update booking status with notification (protected - admin/staff only)
 router.patch("/:id/status", firebaseAuth, authorize("admin", "staff"), updateBookingStatusWithNotification);
