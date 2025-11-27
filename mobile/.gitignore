@@ -38,6 +38,8 @@ yarn-error.*
 
 # generated native folders
 /ios
-/android
+/android/*
 # But track Firebase config
+!/android/app/
+/android/app/*
 !/android/app/google-services.json
