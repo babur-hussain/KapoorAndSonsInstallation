@@ -157,13 +157,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // Register for push notifications after successful auth
         setTimeout(async () => {
+          console.log('🔔 Starting push notification registration...');
           try {
             const pushToken = await registerForPushNotificationsAsync();
             if (pushToken) {
+              console.log('✅ Got push token, saving to server...');
               await savePushTokenToServer(pushToken);
+              console.log('✅ Push notification setup complete!');
+            } else {
+              console.log('⚠️  No push token received');
             }
-          } catch (error) {
-            console.log("Push notification registration failed, continuing without notifications");
+          } catch (error: any) {
+            console.error("❌ Push notification registration failed:", error.message);
           }
         }, 500);
 

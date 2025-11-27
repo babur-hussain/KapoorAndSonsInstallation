@@ -32,26 +32,37 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
   }
 
   if (Device.isDevice) {
+    console.log('🔔 Checking push notification permissions...');
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     
+    console.log('📋 Existing permission status:', existingStatus);
+    
     if (existingStatus !== 'granted') {
+      console.log('🔔 Requesting permissions...');
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
+      console.log('📋 Permission request result:', status);
     }
     
     if (finalStatus !== 'granted') {
-      console.log('Failed to get push token for push notification!');
+      console.log('❌ Failed to get push token - permission denied!');
       return;
     }
     
-    token = (await Notifications.getExpoPushTokenAsync({
-      projectId: '0488f9f0-4966-48b0-9ae9-308a4ccb3a88', // From app.json
-    })).data;
-    
-    console.log('✅ Expo Push Token:', token);
+    console.log('🔑 Getting Expo push token...');
+    try {
+      token = (await Notifications.getExpoPushTokenAsync({
+        projectId: '0488f9f0-4966-48b0-9ae9-308a4ccb3a88', // From app.json
+      })).data;
+      
+      console.log('✅ Expo Push Token:', token);
+    } catch (error: any) {
+      console.error('❌ Error getting push token:', error.message);
+      return;
+    }
   } else {
-    console.log('Must use physical device for Push Notifications');
+    console.log('⚠️  Must use physical device for Push Notifications');
   }
 
   return token;
@@ -62,14 +73,18 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
  */
 export async function savePushTokenToServer(pushToken: string): Promise<void> {
   try {
+    console.log('💾 Saving push token to server...');
     const authToken = await SecureStore.getItemAsync('auth_token');
     
     if (!authToken) {
-      console.log('No auth token found, skipping push token save');
+      console.log('❌ No auth token found, skipping push token save');
       return;
     }
 
-    await axios.post(
+    console.log('🔐 Auth token found, making API call...');
+    console.log('📡 API URL:', `${API_BASE_URL}/auth/push-token`);
+    
+    const response = await axios.post(
       `${API_BASE_URL}/auth/push-token`,
       { pushToken },
       {
@@ -77,12 +92,18 @@ export async function savePushTokenToServer(pushToken: string): Promise<void> {
           Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
+        timeout: 15000,
       }
     );
     
-    console.log('✅ Push token saved to server');
+    console.log('✅ Push token saved to server successfully!');
+    console.log('📋 Response:', response.data);
   } catch (error: any) {
     console.error('❌ Failed to save push token:', error.response?.data || error.message);
+    if (error.response) {
+      console.error('📋 Status:', error.response.status);
+      console.error('📋 Data:', error.response.data);
+    }
   }
 }
 
