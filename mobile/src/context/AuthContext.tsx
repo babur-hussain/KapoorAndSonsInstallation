@@ -156,8 +156,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }, 100);
 
         // Register for push notifications after successful auth
-        setTimeout(async () => {
-          console.log('🔔 Starting push notification registration...');
+        console.log('🔔 Starting push notification registration...');
+        (async () => {
           try {
             const pushToken = await registerForPushNotificationsAsync();
             if (pushToken) {
@@ -170,7 +170,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           } catch (error: any) {
             console.error("❌ Push notification registration failed:", error.message);
           }
-        }, 500);
+        })();
 
         console.log(`✅ Firebase authentication successful: ${userData.email}`);
         setIsLoading(false);
