@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "361055082931",
+    "firebase_url": "https://kapoor-and-sons-demo.firebaseio.com",
+    "project_id": "kapoor-and-sons-demo",
+    "storage_bucket": "kapoor-and-sons-demo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:361055082931:android:124aae0a3a657a741993c6",
+        "android_client_info": {
+          "package_name": "com.kapoorandsons.demo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "361055082931-xxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+          "client_type": 3
+        },
+        {
+          "client_id": "361055082931-yyyyyyyyyyyyyyyyyyyyyyyyyy.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kapoorandsons.demo",
+            "certificate_hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAEgjHqH7qXluNEG4kii4JvxpyMrZV9UXU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "361055082931-xxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
+
