@@ -52,6 +52,8 @@ const bookingSchema = new mongoose.Schema(
       ref: "User",
     },
     updates: [updateSchema],
+    lastRescheduleEmailAt: { type: Date },
+    rescheduleCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kapoorandsons.demo"
+      "bundleIdentifier": "com.baburhussain.kapoorandsons",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.kapoorandsons.demo",

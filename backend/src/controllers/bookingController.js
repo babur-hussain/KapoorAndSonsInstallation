@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Booking } from "../models/Booking.js";
 import { Brand } from "../models/Brand.js";
 import { Category } from "../models/Category.js";
@@ -13,6 +14,28 @@ import {
   sendNewBookingEmailToBrand,
 } from "../services/emailService.js";
 import { triggerDemoBookingEmail, triggerBookingWebhook } from "../services/n8nService.js";
+
+const ONE_HOUR_MS = 60 * 60 * 1000;
+const RESCHEDULE_INTERVAL_MS = 24 * ONE_HOUR_MS;
+
+const hoursLeft = (ms) => Math.ceil(ms / ONE_HOUR_MS);
+
+async function findBookingByIdentifier(identifier) {
+  if (!identifier) return null;
+
+  const rawId = typeof identifier === "string" ? identifier.trim() : identifier;
+  let booking = null;
+
+  if (typeof rawId === "string" && mongoose.Types.ObjectId.isValid(rawId)) {
+    booking = await Booking.findById(rawId);
+  }
+
+  if (!booking && typeof rawId === "string" && rawId.length > 0) {
+    booking = await Booking.findOne({ bookingId: rawId.toUpperCase() });
+  }
+
+  return booking;
+}
 
 /**
  * Log activity to database
@@ -586,6 +609,118 @@ export const updateBookingStatus = async (req, res) => {
     res.json({ success: true, booking });
   } catch (err) {
     console.error("❌ Error updating booking:", err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+/**
+ * Trigger reschedule email after 24 hours for pending bookings
+ * @route POST /api/v1/bookings/:id/reschedule-email
+ * @access Protected (customer who created booking or admin/staff)
+ */
+export const rescheduleBookingEmail = async (req, res) => {
+  try {
+    const identifier = req.params.id || req.body?.bookingId || req.body?.mongoId;
+    const booking = await findBookingByIdentifier(identifier);
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
+    const userId = req.user?._id?.toString();
+    const userEmail = req.user?.email?.toLowerCase();
+    const userRole = req.user?.role;
+    const isPrivileged = ["admin", "staff"].includes(userRole);
+    const isOwner = booking.createdBy && userId && booking.createdBy.toString() === userId;
+    const matchesEmail =
+      booking.email && userEmail && booking.email.toLowerCase() === userEmail;
+
+    if (!isPrivileged && !isOwner && !matchesEmail) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to reschedule this booking.",
+      });
+    }
+
+    if (booking.status !== "Pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Only pending bookings can request a reschedule email.",
+      });
+    }
+
+    const now = new Date();
+    const createdAtMs = new Date(booking.createdAt).getTime();
+    const ageMs = now.getTime() - createdAtMs;
+
+    if (ageMs < RESCHEDULE_INTERVAL_MS) {
+      const waitMs = RESCHEDULE_INTERVAL_MS - ageMs;
+      return res.status(400).json({
+        success: false,
+        message: `Reschedule option becomes available after ${hoursLeft(waitMs)} hour(s).`,
+        nextAvailableAt: new Date(createdAtMs + RESCHEDULE_INTERVAL_MS),
+      });
+    }
+
+    if (booking.lastRescheduleEmailAt) {
+      const lastMs = new Date(booking.lastRescheduleEmailAt).getTime();
+      const diffMs = now.getTime() - lastMs;
+      if (diffMs < RESCHEDULE_INTERVAL_MS) {
+        const remaining = RESCHEDULE_INTERVAL_MS - diffMs;
+        return res.status(429).json({
+          success: false,
+          message: `Please wait ${hoursLeft(remaining)} hour(s) before rescheduling again.`,
+          nextAvailableAt: new Date(lastMs + RESCHEDULE_INTERVAL_MS),
+        });
+      }
+    }
+
+    const triggerResult = await triggerDemoBookingEmail(booking);
+    if (!triggerResult || !triggerResult.success) {
+      const errorMessage = triggerResult?.error || "Failed to trigger follow-up email.";
+      throw new Error(errorMessage);
+    }
+
+    booking.lastRescheduleEmailAt = now;
+    booking.rescheduleCount = (booking.rescheduleCount || 0) + 1;
+    booking.updates = booking.updates || [];
+    booking.updates.push({
+      message: `Reschedule email triggered (#${booking.rescheduleCount})`,
+      timestamp: now,
+      updatedBy: req.user?._id,
+    });
+    await booking.save();
+
+    await logActivity(
+      "booking_reschedule_triggered",
+      `Reschedule email triggered for ${booking.customerName}`,
+      booking._id,
+      {
+        rescheduleCount: booking.rescheduleCount,
+        triggeredBy: req.user?.email || req.user?._id,
+      },
+      "info"
+    );
+
+    const bookingPayload = booking.toObject ? booking.toObject() : booking;
+    triggerBookingWebhook(bookingPayload).catch((err) => {
+      console.error("⚠️  Reschedule webhook error:", err.message);
+    });
+
+    res.json({
+      success: true,
+      message: "Reminder email sent to the brand.",
+      data: {
+        bookingId: booking._id,
+        lastRescheduleEmailAt: booking.lastRescheduleEmailAt,
+        rescheduleCount: booking.rescheduleCount,
+        nextAvailableAt: new Date(
+          booking.lastRescheduleEmailAt.getTime() + RESCHEDULE_INTERVAL_MS
+        ),
+      },
+    });
+  } catch (err) {
+    console.error("❌ Error triggering reschedule email:", err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 };

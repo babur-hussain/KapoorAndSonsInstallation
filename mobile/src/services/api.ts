@@ -72,6 +72,42 @@ export async function getBookingEmails(bookingId: string, token: string) {
   return response.data.data?.emails || [];
 }
 
+export interface RescheduleResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    bookingId: string;
+    lastRescheduleEmailAt?: string;
+    rescheduleCount?: number;
+    nextAvailableAt?: string;
+  };
+}
+
+export interface RescheduleRequestPayload {
+  mongoId?: string;
+  bookingCode?: string;
+}
+
+export async function triggerBookingReschedule(
+  payload: RescheduleRequestPayload,
+  token: string
+): Promise<RescheduleResponse> {
+  const { mongoId, bookingCode } = payload;
+  const url = mongoId
+    ? `${API_BASE_URL}/bookings/${mongoId}/reschedule-email`
+    : `${API_BASE_URL}/bookings/reschedule-email`;
+
+  const body: Record<string, string | undefined> = {
+    bookingId: bookingCode,
+    mongoId,
+  };
+
+  const response = await axios.post(url, body, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+}
+
 // Legacy API object (keeping for backward compatibility)
 export const api = {
   // Get bookings count

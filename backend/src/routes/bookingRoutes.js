@@ -9,6 +9,7 @@ import {
   getUserBookings,
   updateBookingStatusWithNotification,
   getBookingEmails,
+  rescheduleBookingEmail,
 } from "../controllers/bookingController.js";
 
 const router = express.Router();
@@ -25,11 +26,17 @@ router.get("/user", firebaseAuth, getUserBookings);
 // Get all bookings (protected - admin/staff only)
 router.get("/", firebaseAuth, authorize("admin", "staff"), getAllBookings);
 
+// Trigger reschedule email webhook via body payload (protected - customer/admin)
+router.post("/reschedule-email", firebaseAuth, rescheduleBookingEmail);
+
 // Get booking by ID (protected - requires authentication)
 router.get("/:id", firebaseAuth, getBookingById);
 
 // Get email communications for a specific booking (protected - requires authentication)
 router.get("/:id/emails", firebaseAuth, getBookingEmails);
+
+// Trigger reschedule email webhook via path param (protected - customer/admin)
+router.post("/:id/reschedule-email", firebaseAuth, rescheduleBookingEmail);
 
 // Update booking status with notification (protected - admin/staff only)
 router.patch("/:id/status", firebaseAuth, authorize("admin", "staff"), updateBookingStatusWithNotification);

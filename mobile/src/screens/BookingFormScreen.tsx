@@ -8,6 +8,8 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Formik } from 'formik';
@@ -95,6 +97,7 @@ export default function BookingFormScreen({ navigation }: Props) {
   const [loadingBrands, setLoadingBrands] = useState(true);
   const [brandOptions, setBrandOptions] = useState<string[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? 100 : 0;
 
   const initialValues = {
     name: '',
@@ -302,11 +305,17 @@ export default function BookingFormScreen({ navigation }: Props) {
           setFieldValue,
           isSubmitting,
         }) => (
-          <ScrollView
-            style={styles.container}
-            keyboardShouldPersistTaps="handled"
+          <KeyboardAvoidingView
+            style={styles.keyboardAvoider}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={keyboardVerticalOffset}
           >
-            <View style={styles.content}>
+            <ScrollView
+              style={styles.container}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.content}>
               <Text style={styles.title}>Book a Demo</Text>
               <Text style={styles.subtitle}>Fill in your details below</Text>
 
@@ -522,10 +531,11 @@ export default function BookingFormScreen({ navigation }: Props) {
               onPress={() => navigation.goBack()}
               disabled={isSubmitting}
             >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     )}
   </Formik>
   {showSuccess && (
@@ -538,11 +548,19 @@ export default function BookingFormScreen({ navigation }: Props) {
     />
   )}
 </>
-);
-}const styles = StyleSheet.create({
+  );
+}
+
+const styles = StyleSheet.create({
+  keyboardAvoider: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
+    paddingBottom: 120,
   },
   content: {
     padding: 16,

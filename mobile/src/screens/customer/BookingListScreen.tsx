@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useAuth } from "../../context/AuthContext";
 import { API_BASE_URL } from '../../config/api';
-import { getBookingEmails } from '../../services/api';
+import { getBookingEmails, triggerBookingReschedule } from '../../services/api';
 import socketService from "../../services/socketService";
 import axios from "axios";
 
@@ -50,7 +50,25 @@ interface Booking {
   }>;
   createdAt: string;
   updatedAt: string;
+  lastRescheduleEmailAt?: string;
+  rescheduleCount?: number;
 }
+
+const ONE_MINUTE_MS = 60 * 1000;
+const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
+const RESCHEDULE_INTERVAL_MS = 24 * ONE_HOUR_MS;
+
+const formatDuration = (ms: number) => {
+  const safeMs = Math.max(ms, 0);
+  const hours = Math.floor(safeMs / ONE_HOUR_MS);
+  const minutes = Math.ceil((safeMs % ONE_HOUR_MS) / ONE_MINUTE_MS);
+
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+
+  return `${Math.max(minutes, 1)}m`;
+};
 
 const buildEmailKey = (email: any) => {
   const timestampValue = email?.timestamp ? new Date(email.timestamp).getTime() : 0;
@@ -85,6 +103,7 @@ const BookingListScreen = ({ navigation }: any) => {
   const [bookingEmails, setBookingEmails] = useState<{ [key: string]: any[] }>({});
   const [emailsLoading, setEmailsLoading] = useState<{ [key: string]: boolean }>({});
   const [bookingStatuses, setBookingStatuses] = useState<{ [key: string]: string }>({});
+  const [rescheduleLoading, setRescheduleLoading] = useState<{ [key: string]: boolean }>({});
   const fetchBookingEmails = async (bookingId: string, currentStatus?: string) => {
     if (!token) return;
     setEmailsLoading(prev => ({ ...prev, [bookingId]: true }));
@@ -212,6 +231,105 @@ const BookingListScreen = ({ navigation }: any) => {
     }
   };
 
+  const getEffectiveStatus = (booking: Booking) =>
+    bookingStatuses[booking._id] || booking.status;
+
+  const shouldShowRescheduleButton = (booking: Booking) => {
+    if (getEffectiveStatus(booking) !== "Pending") {
+      return false;
+    }
+
+    const now = Date.now();
+    const createdAt = new Date(booking.createdAt).getTime();
+    if (now - createdAt < RESCHEDULE_INTERVAL_MS) {
+      return false;
+    }
+
+    if (booking.lastRescheduleEmailAt) {
+      const lastTrigger = new Date(booking.lastRescheduleEmailAt).getTime();
+      if (now - lastTrigger < RESCHEDULE_INTERVAL_MS) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const getRescheduleCooldownMessage = (booking: Booking) => {
+    if (getEffectiveStatus(booking) !== "Pending") {
+      return null;
+    }
+
+    const now = Date.now();
+    const createdAt = new Date(booking.createdAt).getTime();
+    if (now - createdAt < RESCHEDULE_INTERVAL_MS) {
+      return `Reschedule available in ${formatDuration(RESCHEDULE_INTERVAL_MS - (now - createdAt))}.`;
+    }
+
+    if (booking.lastRescheduleEmailAt) {
+      const lastTrigger = new Date(booking.lastRescheduleEmailAt).getTime();
+      const elapsed = now - lastTrigger;
+      if (elapsed < RESCHEDULE_INTERVAL_MS) {
+        return `You can send another reminder in ${formatDuration(RESCHEDULE_INTERVAL_MS - elapsed)}.`;
+      }
+    }
+
+    return null;
+  };
+
+  const handleReschedulePress = async (booking: Booking) => {
+    if (!token) {
+      Alert.alert(
+        "Authentication Required",
+        "Please login again to request a reschedule."
+      );
+      return;
+    }
+
+    setRescheduleLoading((prev) => ({ ...prev, [booking._id]: true }));
+
+    try {
+      const response = await triggerBookingReschedule(
+        { mongoId: booking._id, bookingCode: booking.bookingId },
+        token
+      );
+      if (!response?.success) {
+        throw new Error(response?.message || "Unable to trigger reschedule.");
+      }
+      const lastTrigger =
+        response?.data?.lastRescheduleEmailAt || new Date().toISOString();
+      const countFromServer = response?.data?.rescheduleCount;
+
+      setBookings((prev) =>
+        prev.map((existingBooking) =>
+          existingBooking._id === booking._id
+            ? {
+                ...existingBooking,
+                lastRescheduleEmailAt: lastTrigger,
+                rescheduleCount:
+                  typeof countFromServer === "number"
+                    ? countFromServer
+                    : (existingBooking.rescheduleCount || 0) + 1,
+              }
+            : existingBooking
+        )
+      );
+
+      Alert.alert(
+        "Reminder Sent",
+        response?.message || "We have notified the company again."
+      );
+    } catch (error: any) {
+      const serverMessage = error?.response?.data?.message;
+      Alert.alert(
+        "Reschedule Failed",
+        serverMessage || error.message || "Unable to trigger reschedule."
+      );
+    } finally {
+      setRescheduleLoading((prev) => ({ ...prev, [booking._id]: false }));
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Pending":
@@ -256,6 +374,8 @@ const BookingListScreen = ({ navigation }: any) => {
   const renderBookingCard = ({ item }: { item: Booking }) => {
     const isExpanded = expandedId === item._id;
     const displayStatus = bookingStatuses[item._id] || item.status;
+    const showReschedule = shouldShowRescheduleButton(item);
+    const rescheduleMessage = getRescheduleCooldownMessage(item);
 
     return (
       <TouchableOpacity
@@ -333,6 +453,10 @@ const BookingListScreen = ({ navigation }: any) => {
                 </Text>
               </View>
               <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Customer Name:</Text>
+                <Text style={styles.detailValue}>{item.customerName || "N/A"}</Text>
+              </View>
+              <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Address:</Text>
                 <Text style={styles.detailValue}>{item.address}</Text>
               </View>
@@ -357,6 +481,39 @@ const BookingListScreen = ({ navigation }: any) => {
                   <Text style={styles.detailLabel}>Alternate Contact:</Text>
                   <Text style={styles.detailValue}>{item.alternateContactNumber}</Text>
                 </View>
+              )}
+            </View>
+
+            <View style={styles.detailSection}>
+              <Text style={styles.sectionTitle}>Need A Follow-up?</Text>
+              {showReschedule ? (
+                <>
+                  <Text style={styles.rescheduleHint}>
+                    Resend the booking email to the company to nudge for a new
+                    schedule.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.rescheduleButton}
+                    onPress={() => handleReschedulePress(item)}
+                    disabled={rescheduleLoading[item._id]}
+                  >
+                    {rescheduleLoading[item._id] ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.rescheduleButtonText}>
+                        Reschedule Booking
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </>
+              ) : (
+                rescheduleMessage && (
+                  <View style={styles.rescheduleInfoBox}>
+                    <Text style={styles.rescheduleInfoText}>
+                      {rescheduleMessage}
+                    </Text>
+                  </View>
+                )
               )}
             </View>
 
@@ -664,6 +821,32 @@ const styles = StyleSheet.create({
   updateTime: {
     fontSize: 12,
     color: "#666",
+  },
+  rescheduleHint: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 8,
+  },
+  rescheduleButton: {
+    backgroundColor: "#ff9500",
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  rescheduleButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  rescheduleInfoBox: {
+    backgroundColor: "#f1f5ff",
+    padding: 12,
+    borderRadius: 8,
+  },
+  rescheduleInfoText: {
+    fontSize: 13,
+    color: "#4a5d8f",
   },
 });
 
