@@ -642,45 +642,18 @@ export const rescheduleBookingEmail = async (req, res) => {
       });
     }
 
-    if (booking.status !== "Pending") {
-      return res.status(400).json({
-        success: false,
-        message: "Only pending bookings can request a reschedule email.",
-      });
+    // Always allow reschedule; no cooldown block to ensure webhook goes out
+
+    // Try to trigger the same email workflow as creation, but don't fail hard if n8n is down
+    let emailSuccess = false;
+    try {
+      const triggerResult = await triggerDemoBookingEmail(booking);
+      emailSuccess = Boolean(triggerResult && triggerResult.success);
+    } catch (e) {
+      console.warn("⚠️ Reschedule email trigger failed, continuing to webhook:", e.message);
     }
 
     const now = new Date();
-    const createdAtMs = new Date(booking.createdAt).getTime();
-    const ageMs = now.getTime() - createdAtMs;
-
-    if (ageMs < RESCHEDULE_INTERVAL_MS) {
-      const waitMs = RESCHEDULE_INTERVAL_MS - ageMs;
-      return res.status(400).json({
-        success: false,
-        message: `Reschedule option becomes available after ${hoursLeft(waitMs)} hour(s).`,
-        nextAvailableAt: new Date(createdAtMs + RESCHEDULE_INTERVAL_MS),
-      });
-    }
-
-    if (booking.lastRescheduleEmailAt) {
-      const lastMs = new Date(booking.lastRescheduleEmailAt).getTime();
-      const diffMs = now.getTime() - lastMs;
-      if (diffMs < RESCHEDULE_INTERVAL_MS) {
-        const remaining = RESCHEDULE_INTERVAL_MS - diffMs;
-        return res.status(429).json({
-          success: false,
-          message: `Please wait ${hoursLeft(remaining)} hour(s) before rescheduling again.`,
-          nextAvailableAt: new Date(lastMs + RESCHEDULE_INTERVAL_MS),
-        });
-      }
-    }
-
-    const triggerResult = await triggerDemoBookingEmail(booking);
-    if (!triggerResult || !triggerResult.success) {
-      const errorMessage = triggerResult?.error || "Failed to trigger follow-up email.";
-      throw new Error(errorMessage);
-    }
-
     booking.lastRescheduleEmailAt = now;
     booking.rescheduleCount = (booking.rescheduleCount || 0) + 1;
     booking.updates = booking.updates || [];
@@ -703,13 +676,16 @@ export const rescheduleBookingEmail = async (req, res) => {
     );
 
     const bookingPayload = booking.toObject ? booking.toObject() : booking;
-    triggerBookingWebhook(bookingPayload).catch((err) => {
-      console.error("⚠️  Reschedule webhook error:", err.message);
-    });
+    const webhookResult = await triggerBookingWebhook(bookingPayload);
+    if (!webhookResult || !webhookResult.success) {
+      console.warn("⚠️ Reschedule webhook reported failure:", webhookResult?.error);
+    }
 
     res.json({
       success: true,
-      message: "Reminder email sent to the brand.",
+      message: emailSuccess
+        ? "Reminder email and webhook sent."
+        : "Webhook sent. Email workflow may be offline; please verify in n8n.",
       data: {
         bookingId: booking._id,
         lastRescheduleEmailAt: booking.lastRescheduleEmailAt,

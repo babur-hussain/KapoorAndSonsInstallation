@@ -234,48 +234,9 @@ const BookingListScreen = ({ navigation }: any) => {
   const getEffectiveStatus = (booking: Booking) =>
     bookingStatuses[booking._id] || booking.status;
 
-  const shouldShowRescheduleButton = (booking: Booking) => {
-    if (getEffectiveStatus(booking) !== "Pending") {
-      return false;
-    }
+  const shouldShowRescheduleButton = (booking: Booking) => getEffectiveStatus(booking) === "Pending";
 
-    const now = Date.now();
-    const createdAt = new Date(booking.createdAt).getTime();
-    if (now - createdAt < RESCHEDULE_INTERVAL_MS) {
-      return false;
-    }
-
-    if (booking.lastRescheduleEmailAt) {
-      const lastTrigger = new Date(booking.lastRescheduleEmailAt).getTime();
-      if (now - lastTrigger < RESCHEDULE_INTERVAL_MS) {
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  const getRescheduleCooldownMessage = (booking: Booking) => {
-    if (getEffectiveStatus(booking) !== "Pending") {
-      return null;
-    }
-
-    const now = Date.now();
-    const createdAt = new Date(booking.createdAt).getTime();
-    if (now - createdAt < RESCHEDULE_INTERVAL_MS) {
-      return `Reschedule available in ${formatDuration(RESCHEDULE_INTERVAL_MS - (now - createdAt))}.`;
-    }
-
-    if (booking.lastRescheduleEmailAt) {
-      const lastTrigger = new Date(booking.lastRescheduleEmailAt).getTime();
-      const elapsed = now - lastTrigger;
-      if (elapsed < RESCHEDULE_INTERVAL_MS) {
-        return `You can send another reminder in ${formatDuration(RESCHEDULE_INTERVAL_MS - elapsed)}.`;
-      }
-    }
-
-    return null;
-  };
+  const getRescheduleCooldownMessage = (_booking: Booking) => null;
 
   const handleReschedulePress = async (booking: Booking) => {
     if (!token) {
