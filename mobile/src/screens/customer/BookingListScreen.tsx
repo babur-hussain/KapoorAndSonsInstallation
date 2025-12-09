@@ -14,6 +14,7 @@ import { API_BASE_URL } from '../../config/api';
 import { getBookingEmails, triggerBookingReschedule } from '../../services/api';
 import socketService from "../../services/socketService";
 import axios from "axios";
+import SuccessAnimation from "../../components/SuccessAnimation";
 
 // API base imported from config
 
@@ -104,6 +105,8 @@ const BookingListScreen = ({ navigation }: any) => {
   const [emailsLoading, setEmailsLoading] = useState<{ [key: string]: boolean }>({});
   const [bookingStatuses, setBookingStatuses] = useState<{ [key: string]: string }>({});
   const [rescheduleLoading, setRescheduleLoading] = useState<{ [key: string]: boolean }>({});
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("Reminder sent.");
   const fetchBookingEmails = async (bookingId: string, currentStatus?: string) => {
     if (!token) return;
     setEmailsLoading(prev => ({ ...prev, [bookingId]: true }));
@@ -234,9 +237,37 @@ const BookingListScreen = ({ navigation }: any) => {
   const getEffectiveStatus = (booking: Booking) =>
     bookingStatuses[booking._id] || booking.status;
 
-  const shouldShowRescheduleButton = (booking: Booking) => getEffectiveStatus(booking) === "Pending";
+  const hasEmailReply = (booking: Booking) => {
+    const replies = bookingEmails[booking._id];
+    if (!replies || replies.length === 0) return false;
+    return replies.some((email) => email.emailType === "reply");
+  };
 
-  const getRescheduleCooldownMessage = (_booking: Booking) => null;
+  const isInCooldown = (booking: Booking) => {
+    if (!booking.lastRescheduleEmailAt) return false;
+    const lastTrigger = new Date(booking.lastRescheduleEmailAt).getTime();
+    return Date.now() - lastTrigger < RESCHEDULE_INTERVAL_MS;
+  };
+
+  const shouldShowRescheduleButton = (booking: Booking) => {
+    if (getEffectiveStatus(booking) !== "Pending") return false;
+    if (hasEmailReply(booking)) return false;
+    if (isInCooldown(booking)) return false;
+    return true;
+  };
+
+  const getRescheduleCooldownMessage = (booking: Booking) => {
+    if (getEffectiveStatus(booking) !== "Pending") return null;
+    if (hasEmailReply(booking)) {
+      return "Email reply received; no further reminders needed.";
+    }
+    if (isInCooldown(booking)) {
+      const lastTrigger = new Date(booking.lastRescheduleEmailAt || 0).getTime();
+      const remaining = RESCHEDULE_INTERVAL_MS - (Date.now() - lastTrigger);
+      return `You can resend in ${formatDuration(remaining)}.`;
+    }
+    return null;
+  };
 
   const handleReschedulePress = async (booking: Booking) => {
     if (!token) {
@@ -276,10 +307,8 @@ const BookingListScreen = ({ navigation }: any) => {
         )
       );
 
-      Alert.alert(
-        "Reminder Sent",
-        response?.message || "We have notified the company again."
-      );
+      setSuccessMessage(response?.message || "Reminder sent.");
+      setShowSuccess(true);
     } catch (error: any) {
       const serverMessage = error?.response?.data?.message;
       Alert.alert(
@@ -588,6 +617,12 @@ const BookingListScreen = ({ navigation }: any) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       />
+      {showSuccess && (
+        <SuccessAnimation
+          message={successMessage}
+          onComplete={() => setShowSuccess(false)}
+        />
+      )}
     </View>
   );
 };
