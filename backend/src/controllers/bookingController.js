@@ -677,15 +677,16 @@ export const rescheduleBookingEmail = async (req, res) => {
 
     const bookingPayload = booking.toObject ? booking.toObject() : booking;
     const webhookResult = await triggerBookingWebhook(bookingPayload);
-    if (!webhookResult || !webhookResult.success) {
+    const webhookOk = Boolean(webhookResult && webhookResult.success);
+    if (!webhookOk) {
       console.warn("⚠️ Reschedule webhook reported failure:", webhookResult?.error);
     }
 
     res.json({
       success: true,
-      message: emailSuccess
-        ? "Reminder email and webhook sent."
-        : "Webhook sent. Email workflow may be offline; please verify in n8n.",
+      message: webhookOk
+        ? "Reminder sent."
+        : "Attempted reminder; please verify webhook in n8n.",
       data: {
         bookingId: booking._id,
         lastRescheduleEmailAt: booking.lastRescheduleEmailAt,

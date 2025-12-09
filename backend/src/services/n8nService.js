@@ -11,6 +11,9 @@ import { User } from "../models/User.js";
 const N8N_WEBHOOK_URL =
   process.env.N8N_WEBHOOK_URL || "http://localhost:5678/webhook/send-booking-email";
 
+const BOOKING_WEBHOOK_URL =
+  process.env.N8N_BOOKING_WEBHOOK_URL || "https://n8n.srv1148852.hstgr.cloud/webhook/booking-webhook";
+
 /**
  * Trigger n8n workflow to send demo booking email to company
  * @param {Object} booking - The booking object
@@ -159,8 +162,8 @@ export async function triggerCustomEmail(emailData) {
  */
 export async function triggerBookingWebhook(booking, webhookUrl) {
   try {
-    // Use the production webhook URL as default
-    const url = 'https://n8n.srv1148852.hstgr.cloud/webhook/booking-webhook';
+    // Use the configured webhook URL as default
+    const url = webhookUrl || BOOKING_WEBHOOK_URL;
 
     // Get brand details to attach company info
     const brand = await Brand.findOne({ name: booking.brand });
