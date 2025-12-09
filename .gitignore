@@ -5,6 +5,9 @@ node_modules
 .vscode
 .DS_Store
 
+# Uploaded assets
+uploads/
+
 # Firebase service account (contains sensitive credentials)
 backend/config/firebase-service-account.json
 

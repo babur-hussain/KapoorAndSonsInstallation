@@ -37,6 +37,7 @@ const bookingSchema = new mongoose.Schema(
     brand: { type: String, required: true },
     model: { type: String, required: true },
     invoiceNumber: String,
+    invoiceImage: { type: String },
     preferredDateTime: String,
     status: {
       type: String,

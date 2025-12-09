@@ -57,6 +57,7 @@ export async function triggerDemoBookingEmail(booking) {
       customerEmail: booking.email || "N/A",
       customerPhone: booking.contactNumber,
       customerAddress: booking.address,
+      invoiceImage: booking.invoiceImage || "",
       brand: booking.brand,
       model: booking.model,
       invoiceNumber: booking.invoiceNumber || "N/A",
@@ -201,6 +202,7 @@ export async function triggerBookingWebhook(booking, webhookUrl) {
       brand: booking.brand || '',
       model: booking.model || '',
       invoiceNumber: booking.invoiceNumber || '',
+      invoiceImage: booking.invoiceImage || '',
       preferredDateTime: booking.preferredDateTime ? new Date(booking.preferredDateTime).toISOString() : null,
       createdAt: booking.createdAt ? new Date(booking.createdAt).toISOString() : new Date().toISOString(),
     };

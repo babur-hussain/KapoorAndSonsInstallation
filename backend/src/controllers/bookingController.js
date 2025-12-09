@@ -150,6 +150,7 @@ export const createBooking = async (req, res) => {
     const brand = getField(['brand'], '');
     const model = getField(['model'], '');
     const invoiceNumber = getField(['invoiceNo', 'invoiceNumber', 'invoice_no'], '');
+    const invoiceImage = getField(['invoiceImage', 'invoice_image', 'invoiceUrl', 'invoice_url'], '');
     const preferredDateTime = getField(['preferredAt', 'preferredDateTime', 'preferred_at'], null);
 
     // If category id missing but categoryName provided, try to resolve id
@@ -193,6 +194,7 @@ export const createBooking = async (req, res) => {
       brand,
       model,
       invoiceNumber,
+      invoiceImage,
       preferredDateTime,
       createdBy: req.user?._id || null, // Track who created the booking if available
     };

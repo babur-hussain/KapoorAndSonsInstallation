@@ -25,6 +25,16 @@ export interface BookingFormData {
   categoryName?: string;
   brand: string;
   model: string;
+  invoiceImage?: string;
+}
+
+export interface UploadInvoiceResponse {
+  success: boolean;
+  message: string;
+  url: string;
+  filename?: string;
+  size?: number;
+  mimeType?: string;
 }
 
 export interface BookingResponse {
@@ -61,6 +71,47 @@ export const submitBooking = async (data: BookingFormData): Promise<BookingRespo
   } catch (error: any) {
     console.error('API Error:', error.response?.data || error.message);
     throw new Error(error.response?.data?.message || error.message || 'Failed to submit booking');
+  }
+};
+
+export const uploadInvoiceImage = async (uri: string): Promise<string> => {
+  try {
+    const token = await SecureStore.getItemAsync(TOKEN_KEY);
+
+    if (!token) {
+      throw new Error('No authentication token found. Please login again.');
+    }
+
+    const filename = uri.split('/').pop() || 'invoice.jpg';
+    const extension = filename.split('.').pop()?.toLowerCase();
+    const mimeType = extension === 'png'
+      ? 'image/png'
+      : extension === 'webp'
+        ? 'image/webp'
+        : 'image/jpeg';
+
+    const formData = new FormData();
+    formData.append('invoice', {
+      uri,
+      name: filename,
+      type: mimeType,
+    } as any);
+
+    const response = await axios.post<UploadInvoiceResponse>(`${API_BASE_URL}/uploads/invoice`, formData, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    if (!response.data?.success || !response.data.url) {
+      throw new Error(response.data?.message || 'Failed to upload invoice');
+    }
+
+    return response.data.url;
+  } catch (error: any) {
+    console.error('Invoice upload failed:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || error.message || 'Failed to upload invoice');
   }
 };
 
