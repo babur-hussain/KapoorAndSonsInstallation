@@ -532,67 +532,17 @@ export default function BookingFormScreen({ navigation }: Props) {
               touched={touched.model}
             />
 
+            {/* IMAGE PICKER TEMPORARILY DISABLED - Native module 'ExponentImagePicker' not available in current build
+            Will re-enable after proper EAS native module linking.
             <TouchableOpacity
               style={[styles.uploadButton, uploadingInvoice && styles.disabledButton]}
-              onPress={async () => {
-                try {
-                  const result = await ImagePicker.launchImageLibraryAsync({
-                    mediaTypes: ['images'],
-                    allowsMultipleSelection: false,
-                    quality: 0.7,
-                    base64: false,
-                  });
-
-                  if (result.canceled) return;
-
-                  const asset = result.assets?.[0];
-                  if (!asset?.uri) return;
-
-                  // Ensure file is under 5MB
-                  let sizeBytes = asset.fileSize;
-                  if (sizeBytes == null) {
-                    const info = await FileSystem.getInfoAsync(asset.uri);
-                    sizeBytes = info.size;
-                  }
-
-                  if (sizeBytes && sizeBytes > 5 * 1024 * 1024) {
-                    Alert.alert('File too large', 'Invoice image must be 5MB or smaller.');
-                    return;
-                  }
-
-                  setUploadingInvoice(true);
-                  const uploadedUrl = await uploadInvoiceImage(asset.uri);
-                  setFieldValue('invoiceImage', uploadedUrl);
-                  Alert.alert('Uploaded', 'Invoice image uploaded successfully.');
-                } catch (err: any) {
-                  console.error('Invoice upload error:', err);
-                  Alert.alert('Upload failed', err.message || 'Could not upload invoice image.');
-                } finally {
-                  setUploadingInvoice(false);
-                }
-              }}
+              onPress={async () => { ... }}
               disabled={uploadingInvoice}
             >
-              {uploadingInvoice ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.uploadButtonText}>
-                  {values.invoiceImage ? 'Replace Invoice Image' : 'Upload Invoice (max 5MB)'}
-                </Text>
-              )}
+              ...
             </TouchableOpacity>
-            {values.invoiceImage ? (
-              <>
-                <Text style={styles.uploadHint}>Invoice uploaded. Tap to replace if needed.</Text>
-                <Image
-                  source={{ uri: values.invoiceImage }}
-                  style={styles.previewImage}
-                  resizeMode="cover"
-                />
-              </>
-            ) : (
-              <Text style={styles.uploadHint}>Optional: attach invoice image for faster processing.</Text>
-            )}
+            */}
+            <Text style={styles.uploadHint}>📷 Invoice image uploads will be enabled soon.</Text>
 
             {/* Submit Button */}
             <TouchableOpacity
