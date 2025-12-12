@@ -19,11 +19,9 @@ import axios from 'axios';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import FormInput from '../components/FormInput';
 import FormPicker from '../components/FormPicker';
-import { submitBooking, BookingFormData, uploadInvoiceImage } from '../services/api';
+import { submitBooking, BookingFormData } from '../services/api';
 import { API_BASE_URL } from '../config/api';
 import socketService from '../services/socketService';
-import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 
 // using centralized API_BASE_URL from `src/config/api.ts`
 
