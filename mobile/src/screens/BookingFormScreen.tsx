@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Formik } from 'formik';
@@ -581,7 +582,14 @@ export default function BookingFormScreen({ navigation }: Props) {
               )}
             </TouchableOpacity>
             {values.invoiceImage ? (
-              <Text style={styles.uploadHint}>Invoice uploaded. Tap to replace if needed.</Text>
+              <>
+                <Text style={styles.uploadHint}>Invoice uploaded. Tap to replace if needed.</Text>
+                <Image
+                  source={{ uri: values.invoiceImage }}
+                  style={styles.previewImage}
+                  resizeMode="cover"
+                />
+              </>
             ) : (
               <Text style={styles.uploadHint}>Optional: attach invoice image for faster processing.</Text>
             )}
@@ -699,6 +707,13 @@ const styles = StyleSheet.create({
     marginTop: 6,
     color: '#7f8c8d',
     fontSize: 13,
+  },
+  previewImage: {
+    marginTop: 10,
+    width: '100%',
+    height: 180,
+    borderRadius: 8,
+    backgroundColor: '#ecf0f1',
   },
   loadingContainer: {
     flexDirection: 'row',
