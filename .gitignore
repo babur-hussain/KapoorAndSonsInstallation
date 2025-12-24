@@ -1,0 +1,14 @@
+node_modules
+.env
+/dist
+.expo
+.vscode
+.DS_Store
+
+# Uploaded assets
+uploads/
+
+# Firebase service account (contains sensitive credentials)
+backend/config/firebase-service-account.json
+
+config/firebase-service-account.json

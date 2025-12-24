@@ -1,0 +1,238 @@
+{
+  "name": "AI Auto Reply After Company Response",
+  "nodes": [
+    {
+      "parameters": {
+        "sendTo": "={{ $('Webhook').item.json.body.companyEmail }}",
+        "subject": "=`={{ $json[\"Subject\"]",
+        "message": "=={{ $(\"Message a model\").item.json.content.parts[0].text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        112,
+        -352
+      ],
+      "id": "c6408695-4a70-4cda-82af-c979b2884402",
+      "name": "Send a message",
+      "webhookId": "8b7b62d8-ef04-4d56-8791-6a69174a4a4f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "XWVI7A6fCPi43Noi",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are the email automation assistant for Kapoor & Sons.\n\nYour job is to automatically compose a professional installation booking email to the brand/company whenever a new product booking is created through the Kapoor & Sons system.\n\nUse the provided booking details below to draft the email:\n\nBooking ID: {{ $json.body.bookingDetails._id }}\nCustomer Name: {{ $json.body.bookingDetails.customerName }}\nCustomer Email: {{ $json.body.bookingDetails.email }}\nContact Number: {{ $json.body.bookingDetails.contactNumber }}\nAddress: {{ $json.body.bookingDetails.address }}\nBrand: {{ $json.body.bookingDetails.brand }}\nModel: {{ $json.body.bookingDetails.model }}\nInvoice Number: {{ $json.body.bookingDetails.invoiceNumber }}\nPreferred Installation Date/Time: {{ $json.body.bookingDetails.preferredDateTime }}\nBooking Created At: {{ $json.body.bookingDetails.createdAt }}\n\n---\n\n### ✉️ Your task:\nGenerate a complete professional email from Kapoor & Sons addressed to the respective **brand/company**.\n\n**Tone:** Formal, clear, polite, and professional.  \n**Sender:** Kapoor & Sons  \n**Recipient:** The respective brand/company installation department.  \n**Purpose:** Request for installation/demo scheduling for the mentioned booking.  \n\n**Structure:**\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -288
+      ],
+      "id": "5a2030b1-11fb-41d1-b721-e476b02a12b2",
+      "name": "Message a model",
+      "retryOnFail": true,
+      "alwaysOutputData": false,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gasWoVgGteT8PAZv",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -672,
+        -512
+      ],
+      "id": "5495956d-1c26-4e3e-9a4b-b30a9cde0fec",
+      "name": "On Message Received",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "XWVI7A6fCPi43Noi",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:4000/api/email-hook",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "from",
+              "value": "`={{ $json[\"From\"]"
+            },
+            {
+              "name": "subject",
+              "value": "`={{ $json[\"Subject\"]"
+            },
+            {
+              "name": "replyText",
+              "value": "={{ $('Message a model').item.json.content.parts[0].text }}\n"
+            },
+            {
+              "name": "replySent",
+              "value": "true"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        400,
+        -352
+      ],
+      "id": "d8df909b-00da-44d5-83f9-7d82b1a4cd7d",
+      "name": "HTTP Request",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "send-booking-email",
+        "options": {
+          "rawBody": false,
+          "responseData": "JSON"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -672,
+        -112
+      ],
+      "id": "21872e77-8208-4c61-b8fc-d980b5bbc5a7",
+      "name": "Webhook",
+      "webhookId": "a9e74fea-2f67-4bba-a944-599f5c35f0e2"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json[\"customerEmail\"] }}",
+        "subject": "Your Booking Confirmation – Kapoor & Sons",
+        "message": "=<h2>Thank you, {{ $json[\"customerName\"] }}!</h2>\n<p>Your booking for <b>{{ $json[\"brand\"] }} {{ $json[\"model\"] }}</b> has been received.</p>\n<p>Our team will contact you soon to schedule installation or a demo at:</p>\n<p><b>{{ $json[\"address\"] }}</b></p>\n<p><b>Date:</b> {{ $json[\"preferredDate\"] }}<br>\n<b>Time:</b> {{ $json[\"preferredTime\"] }}</p>\n\n<hr>\n<p>Warm regards,<br>\n<strong>The Kapoor & Sons Team</strong></p>\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        640,
+        -160
+      ],
+      "id": "de6c35cd-f7fa-4898-9147-7f3b454b1cc2",
+      "name": "Send Confirmation to Customer",
+      "webhookId": "8b7b62d8-ef04-4d56-8791-6a69174a4a4f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "XWVI7A6fCPi43Noi",
+          "name": "Gmail account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On Message Received": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Confirmation to Customer": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "d265a528-492c-4dac-af9f-4504d745c82c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3c6c7152aa4ac7554b048ef63400b007818e34562a5a45da5109a1f774ec2ac2"
+  },
+  "id": "sls9RoBQfaABCTmA",
+  "tags": []
+}
