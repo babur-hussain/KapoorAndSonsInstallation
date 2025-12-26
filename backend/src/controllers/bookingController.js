@@ -713,14 +713,63 @@ export const rescheduleBookingEmail = async (req, res) => {
  */
 export const getUserBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find({ createdBy: req.user._id })
+    // Pagination parameters
+    const skip = Math.max(parseInt(req.query.skip) || 0, 0);
+    const requestedLimit = parseInt(req.query.limit) || 20;
+    const limit = Math.max(1, Math.min(requestedLimit, 25)); // Hard-cap to prevent over-fetching
+    
+    // Sorting parameters
+    const sortBy = req.query.sort || 'createdAt';
+    const sortOrder = req.query.order === 'asc' ? 1 : -1;
+    
+    // Filter parameters
+    const statusFilter = req.query.status;
+    const searchQuery = req.query.search;
+
+    // Build query filter
+    const filter = { createdBy: req.user._id };
+    
+    // Add status filter if provided
+    if (statusFilter) {
+      filter.status = statusFilter;
+    }
+    
+    // Add search filter if provided (search across multiple fields)
+    if (searchQuery) {
+      const searchRegex = new RegExp(searchQuery, 'i');
+      filter.$or = [
+        { customerName: searchRegex },
+        { brand: searchRegex },
+        { model: searchRegex },
+        { address: searchRegex },
+        { bookingId: searchRegex },
+        { categoryName: searchRegex },
+        { contactNumber: searchRegex },
+      ];
+    }
+
+    // Build sort object
+    const sortObj = {};
+    sortObj[sortBy] = sortOrder;
+
+    // Get total count for pagination
+    const totalCount = await Booking.countDocuments(filter);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Fetch paginated and filtered bookings
+    const bookings = await Booking.find(filter)
       .populate("assignedTo", "name email phone")
-      .sort({ createdAt: -1 });
+      .sort(sortObj)
+      .skip(skip)
+      .limit(limit);
 
     res.json({
       success: true,
       count: bookings.length,
       data: bookings,
+      totalCount,
+      totalPages,
+      currentPage: Math.floor(skip / limit) + 1,
     });
   } catch (err) {
     console.error("❌ Error fetching user bookings:", err.message);

@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  TextInput,
 } from "react-native";
 import { useAuth } from "../../context/AuthContext";
 import { API_BASE_URL } from '../../config/api';
@@ -99,8 +100,11 @@ const deduplicateEmails = (emails: any[] = []) => {
 const BookingListScreen = ({ navigation }: any) => {
   const { token } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadMoreLoading, setLoadMoreLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [bookingEmails, setBookingEmails] = useState<{ [key: string]: any[] }>({});
   const [emailsLoading, setEmailsLoading] = useState<{ [key: string]: boolean }>({});
@@ -108,6 +112,11 @@ const BookingListScreen = ({ navigation }: any) => {
   const [rescheduleLoading, setRescheduleLoading] = useState<{ [key: string]: boolean }>({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("Reminder sent.");
+  
+  // Pagination and filtering state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 25;
   const fetchBookingEmails = async (bookingId: string, currentStatus?: string) => {
     if (!token) return;
     setEmailsLoading(prev => ({ ...prev, [bookingId]: true }));
@@ -129,17 +138,37 @@ const BookingListScreen = ({ navigation }: any) => {
     }
   };
 
-  const fetchBookings = async () => {
+  const fetchBookings = async (page: number = 1, options?: { append?: boolean }) => {
+    const append = options?.append ?? page > 1;
+    if (append) {
+      setLoadMoreLoading(true);
+    }
     try {
-      const response = await axios.get(`${API_BASE_URL}/bookings/user`, {
+      const skip = (page - 1) * itemsPerPage;
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      params.append('skip', skip.toString());
+      params.append('limit', itemsPerPage.toString());
+
+      const response = await axios.get(`${API_BASE_URL}/bookings/user?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.data.success) {
-        setBookings(response.data.data);
+        const newData: Booking[] = response.data.data || [];
+        if (append) {
+          setAllBookings(prev => [...prev, ...newData]);
+          setBookings(prev => [...prev, ...newData]);
+        } else {
+          setAllBookings(newData);
+          setBookings(newData);
+        }
+        setTotalPages(response.data.totalPages || 1);
+        setCurrentPage(page);
         
         // Check email status for all pending bookings to update their status
-        response.data.data.forEach((booking: Booking) => {
+        newData.forEach((booking: Booking) => {
           if (booking.status === 'Pending') {
             fetchBookingEmails(booking._id, 'Pending');
           }
@@ -154,11 +183,13 @@ const BookingListScreen = ({ navigation }: any) => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadMoreLoading(false);
     }
   };
 
+  // Initial load and Socket.IO setup
   useEffect(() => {
-    fetchBookings();
+    fetchBookings(1);
 
     // Setup Socket.IO listeners for real-time updates
     const handleBookingCreated = (data: any) => {
@@ -221,10 +252,35 @@ const BookingListScreen = ({ navigation }: any) => {
     };
   }, []);
 
+  // Local search filtering - instant, no API call
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setBookings(allBookings);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = allBookings.filter((booking) =>
+        booking.customerName.toLowerCase().includes(query) ||
+        booking.brand.toLowerCase().includes(query) ||
+        booking.model.toLowerCase().includes(query) ||
+        booking.contactNumber.includes(query) ||
+        booking.bookingId?.toLowerCase().includes(query) ||
+        booking.address.toLowerCase().includes(query) ||
+        booking.categoryName?.toLowerCase().includes(query) ||
+        booking.invoiceNumber?.toLowerCase().includes(query)
+      );
+      setBookings(filtered);
+    }
+  }, [searchQuery, allBookings]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchBookings();
+    fetchBookings(1, { append: false });
   }, []);
+
+  const handleLoadMore = () => {
+    if (currentPage >= totalPages || loadMoreLoading) return;
+    fetchBookings(currentPage + 1, { append: true });
+  };
 
   const toggleExpand = (id: string) => {
     const wasExpanded = expandedId === id;
@@ -397,6 +453,9 @@ const BookingListScreen = ({ navigation }: any) => {
         {/* Collapsed View */}
         {!isExpanded && (
           <View style={styles.collapsedInfo}>
+            <Text style={styles.customerNameCollapsed} numberOfLines={1}>
+              👤 {item.customerName}
+            </Text>
             <Text style={styles.infoText} numberOfLines={1}>
               📍 {item.address}
             </Text>
@@ -593,7 +652,9 @@ const BookingListScreen = ({ navigation }: any) => {
     );
   }
 
-  if (bookings.length === 0) {
+  const noBookings = allBookings.length === 0 && searchQuery.trim() === "";
+
+  if (noBookings) {
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.emptyIcon}>📋</Text>
@@ -613,15 +674,57 @@ const BookingListScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Text style={styles.searchIcon}>🔍</Text>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by name, model, mobile, address..."
+          placeholderTextColor="#999"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery("")}>
+            <Text style={styles.clearButton}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       <FlatList
         data={bookings}
         renderItem={renderBookingCard}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setCurrentPage(1); fetchBookings(1); }} />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptySearchContainer}>
+            <Text style={styles.emptyIcon}>🔍</Text>
+            <Text style={styles.emptyTitle}>No matches found</Text>
+            <Text style={styles.emptyText}>
+              Try another search term.
+            </Text>
+          </View>
+        }
+        ListFooterComponent={
+          currentPage < totalPages ? (
+            <TouchableOpacity
+              style={styles.loadMoreButton}
+              onPress={handleLoadMore}
+              disabled={loadMoreLoading}
+            >
+              {loadMoreLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.loadMoreText}>Load more bookings</Text>
+              )}
+            </TouchableOpacity>
+          ) : null
         }
       />
+
       {showSuccess && (
         <SuccessAnimation
           message={successMessage}
@@ -637,12 +740,85 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  searchIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: 44,
+    fontSize: 14,
+    color: "#333",
+    paddingVertical: 10,
+  },
+  clearButton: {
+    fontSize: 18,
+    color: "#999",
+    padding: 8,
+  },
+  paginationContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
+    gap: 8,
+  },
+  paginationButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: "#2196F3",
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  paginationButtonDisabled: {
+    backgroundColor: "#ccc",
+  },
+  paginationButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  pageIndicator: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#333",
+    flex: 1,
+    textAlign: "center",
+  },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
     backgroundColor: "#f5f5f5",
+  },
+  emptySearchContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
   },
   loadingText: {
     marginTop: 10,
@@ -718,6 +894,19 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 16,
   },
+  loadMoreButton: {
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: "#2196F3",
+    alignItems: "center",
+  },
+  loadMoreText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
   card: {
     backgroundColor: "#fff",
     borderRadius: 12,
@@ -759,6 +948,12 @@ const styles = StyleSheet.create({
   },
   collapsedInfo: {
     marginTop: 12,
+  },
+  customerNameCollapsed: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#2196F3",
+    marginBottom: 6,
   },
   infoText: {
     fontSize: 14,
