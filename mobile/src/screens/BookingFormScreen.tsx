@@ -271,7 +271,7 @@ export default function BookingFormScreen({ navigation }: Props) {
         serviceType: values.serviceType,
         email: values.email || undefined,
         problemDescription: values.serviceType === 'Service Complaint' ? values.problemDescription : undefined,
-        dateOfPurchase: values.serviceType === 'Service Complaint' ? values.dateOfPurchase : undefined,
+        dateOfPurchase: values.dateOfPurchase || undefined,
         category: categoryId,
         categoryName: values.category,
         brand: values.brand,
@@ -462,29 +462,28 @@ export default function BookingFormScreen({ navigation }: Props) {
             />
 
             {values.serviceType === 'Service Complaint' && (
-              <>
-                <FormInput
-                  label="Problem Description *"
-                  value={values.problemDescription}
-                  onChangeText={handleChange('problemDescription')}
-                  onBlur={() => handleBlur('problemDescription')}
-                  placeholder="Describe the problem you're experiencing"
-                  multiline
-                  numberOfLines={4}
-                  error={errors.problemDescription}
-                  touched={touched.problemDescription}
-                />
-                <FormInput
-                  label="Date of Purchase (Optional)"
-                  value={values.dateOfPurchase}
-                  onChangeText={handleChange('dateOfPurchase')}
-                  onBlur={() => handleBlur('dateOfPurchase')}
-                  placeholder="DD/MM/YYYY"
-                  error={errors.dateOfPurchase}
-                  touched={touched.dateOfPurchase}
-                />
-              </>
+              <FormInput
+                label="Problem Description *"
+                value={values.problemDescription}
+                onChangeText={handleChange('problemDescription')}
+                onBlur={() => handleBlur('problemDescription')}
+                placeholder="Describe the problem you're experiencing"
+                multiline
+                numberOfLines={4}
+                error={errors.problemDescription}
+                touched={touched.problemDescription}
+              />
             )}
+
+            <FormInput
+              label="Date of Purchase (Optional)"
+              value={values.dateOfPurchase}
+              onChangeText={handleChange('dateOfPurchase')}
+              onBlur={() => handleBlur('dateOfPurchase')}
+              placeholder="DD/MM/YYYY"
+              error={errors.dateOfPurchase}
+              touched={touched.dateOfPurchase}
+            />
 
             {loadingCategories ? (
               <View style={styles.loadingContainer}>
